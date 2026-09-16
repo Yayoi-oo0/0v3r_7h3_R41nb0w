@@ -34,6 +34,8 @@ namespace OverTheRainbow.Stage
         [SerializeField] private float wallHeight = 3f;
 
         [Header("見た目（Phase 1 は白ボックス）")]
+        [Tooltip("URP/Lit のマテリアル。これを複製して色を変える（ビルドでシェーダが削除されないようアセットで持つ）")]
+        [SerializeField] private Material baseMaterial;
         [SerializeField] private Color floorColor = new Color(0.78f, 0.76f, 0.72f);
         [SerializeField] private Color wallColor = new Color(0.55f, 0.54f, 0.52f);
         [SerializeField] private Color goalColor = new Color(0.85f, 0.12f, 0.16f);
@@ -201,14 +203,12 @@ namespace OverTheRainbow.Stage
             balloon.AddComponent<GoalTrigger>();
         }
 
-        private static Material CreateMaterial(string name, Color color)
+        private Material CreateMaterial(string name, Color color)
         {
-            // URP へ移行しても動くよう、シェーダを順に探す
-            Shader shader = Shader.Find("Universal Render Pipeline/Lit");
-            if (shader == null) shader = Shader.Find("Standard");
-            if (shader == null) shader = Shader.Find("Diffuse");
-
-            var mat = new Material(shader);
+            // 未設定のときはエディタ上でだけ動く保険（ビルドではシェーダが見つからないことがある）
+            var mat = baseMaterial != null
+                ? new Material(baseMaterial)
+                : new Material(Shader.Find("Universal Render Pipeline/Lit"));
             mat.name = "Mat_" + name;
             mat.color = color;
             return mat;

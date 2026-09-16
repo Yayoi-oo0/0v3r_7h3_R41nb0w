@@ -28,6 +28,8 @@ namespace OverTheRainbow.EditorTools
             CreateStage();
             CreateSystems();
             CreatePlayer();
+            VisionBlurSetup.ApplyToOpenScene(); // カメラと EyeCoverInput ができてから
+            CorruptionVignetteSetup.ApplyToOpenScene();
 
             System.IO.Directory.CreateDirectory("Assets/Scenes");
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -50,20 +52,23 @@ namespace OverTheRainbow.EditorTools
             var light = lightGo.AddComponent<Light>();
             light.type = LightType.Directional;
             light.color = new Color(1f, 0.97f, 0.92f);
-            light.intensity = 1.0f;
+            light.intensity = 1.3f;
             light.shadows = LightShadows.Soft;
 
-            // ドリームコア寄りの、影が沈みすぎない環境光
+            // 環境光は影の部分も照らすので、明るすぎると影が薄くなる。影がはっきり出る程度に抑える
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.72f, 0.72f, 0.75f);
-            RenderSettings.ambientEquatorColor = new Color(0.62f, 0.60f, 0.58f);
-            RenderSettings.ambientGroundColor = new Color(0.35f, 0.34f, 0.33f);
+            RenderSettings.ambientSkyColor = new Color(0.48f, 0.48f, 0.52f);
+            RenderSettings.ambientEquatorColor = new Color(0.40f, 0.39f, 0.37f);
+            RenderSettings.ambientGroundColor = new Color(0.22f, 0.21f, 0.20f);
         }
 
         private static void CreateStage()
         {
             var go = new GameObject("Stage");
-            go.AddComponent<StageBuilder>();
+            var builder = go.AddComponent<StageBuilder>();
+
+            var baseMat = AssetDatabase.LoadAssetAtPath<Material>(UrpSetup.StageBaseMaterialPath);
+            if (baseMat != null) UrpSetup.AssignBaseMaterial(builder, baseMat);
         }
 
         private static void CreateSystems()
