@@ -5,15 +5,14 @@ using UnityEngine.SceneManagement;
 namespace OverTheRainbow.Core
 {
     /// <summary>
-    /// 状態遷移（Title / Countdown / Play / Clear / GameOver）と制限時間を管理する。
+    /// 状態遷移（Title / Countdown / Play / GameOver）を管理する。
+    /// 制限時間もクリアもなし。落下・侵食 MAX・闇に追いつかれるまで続き、到達距離がスコアになる（企画書 4.4）。
     /// </summary>
     public class GameManager : MonoBehaviour
     {
         public static GameManager Instance { get; private set; }
 
         [Header("ルール（企画書 7. パラメータ表）")]
-        [Tooltip("制限時間（秒）")]
-        [SerializeField] private float timeLimit = 120f;
         [Tooltip("開始カウントダウン（秒）")]
         [SerializeField] private float countdownSeconds = 3f;
         [Tooltip("シーン再生と同時にカウントダウンを始める（Phase 5 でタイトル画面に差し替え）")]
@@ -26,13 +25,8 @@ namespace OverTheRainbow.Core
         public GameState State { get; private set; } = GameState.Title;
         public GameOverReason LastGameOverReason { get; private set; } = GameOverReason.None;
 
-        /// <summary>残り時間（秒）。Playing 中のみ減少する。</summary>
-        public float TimeRemaining { get; private set; }
         /// <summary>カウントダウンの残り秒。</summary>
         public float CountdownRemaining { get; private set; }
-        /// <summary>クリア時の経過タイム（秒）。リザルト表示用。</summary>
-        public float ElapsedTime => Mathf.Max(0f, timeLimit - TimeRemaining);
-        public float TimeLimit => timeLimit;
 
         /// <summary>状態が変わったときに発火。引数は新しい状態。</summary>
         public event Action<GameState> StateChanged;
@@ -47,7 +41,6 @@ namespace OverTheRainbow.Core
                 return;
             }
             Instance = this;
-            TimeRemaining = timeLimit;
         }
 
         private void OnDestroy()
@@ -70,15 +63,6 @@ namespace OverTheRainbow.Core
                     CountdownRemaining -= Time.deltaTime;
                     if (CountdownRemaining <= 0f) SetState(GameState.Playing);
                     break;
-
-                case GameState.Playing:
-                    TimeRemaining -= Time.deltaTime;
-                    if (TimeRemaining <= 0f)
-                    {
-                        TimeRemaining = 0f;
-                        TriggerGameOver(GameOverReason.TimeUp);
-                    }
-                    break;
             }
         }
 
@@ -94,16 +78,9 @@ namespace OverTheRainbow.Core
 
         public void BeginCountdown()
         {
-            TimeRemaining = timeLimit;
             LastGameOverReason = GameOverReason.None;
             CountdownRemaining = countdownSeconds;
             SetState(countdownSeconds > 0f ? GameState.Countdown : GameState.Playing);
-        }
-
-        public void TriggerClear()
-        {
-            if (State != GameState.Playing) return;
-            SetState(GameState.Clear);
         }
 
         public void TriggerGameOver(GameOverReason reason)

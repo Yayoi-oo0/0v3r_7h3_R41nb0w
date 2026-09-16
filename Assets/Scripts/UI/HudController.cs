@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.UI;
 using OverTheRainbow.Core;
+using OverTheRainbow.Player;
+using OverTheRainbow.Stage;
 using OverTheRainbow.Vision;
 
 namespace OverTheRainbow.UI
@@ -12,18 +14,30 @@ namespace OverTheRainbow.UI
     public class HudController : MonoBehaviour
     {
         [SerializeField] private EyeCoverInput eyeCover;
+        [SerializeField] private DistanceTracker distanceTracker;
+        [SerializeField] private DarknessChaser darkness;
         [Tooltip("操作説明を画面下部に出す（体験会では切る）")]
         [SerializeField] private bool showDebugHelp = true;
 
-        private Text timerText;
+        private Text distanceText;
         private Text visionText;
         private Text centerText;
         private Text helpText;
 
         private void Awake()
         {
-            if (eyeCover == null) eyeCover = FindObjectOfType<EyeCoverInput>();
             BuildCanvas();
+        }
+
+        /// <summary>
+        /// 参照は Start で探す。DistanceTracker / DarknessChaser は他のスクリプトの Awake で
+        /// 自動追加されることがあり、Awake の実行順によってはまだ存在しないため。
+        /// </summary>
+        private void Start()
+        {
+            if (eyeCover == null) eyeCover = FindObjectOfType<EyeCoverInput>();
+            if (distanceTracker == null) distanceTracker = FindObjectOfType<DistanceTracker>();
+            if (darkness == null) darkness = FindObjectOfType<DarknessChaser>();
         }
 
         private void Update()
@@ -31,11 +45,14 @@ namespace OverTheRainbow.UI
             GameManager gm = GameManager.Instance;
             if (gm == null) return;
 
-            timerText.text = "のこり  " + Mathf.CeilToInt(gm.TimeRemaining) + " 秒";
+            distanceText.text = FormatDistance();
+            if (darkness != null)
+            {
+                distanceText.text += "\n闇まで  " + Mathf.Max(0, Mathf.FloorToInt(darkness.DistanceToPlayer)) + " m";
+            }
 
             bool covered = eyeCover != null && eyeCover.IsEyeCovered;
-            visionText.text = (covered ? "視界：クリア（移動ロック）" : "視界：ぼやけ")
-                              + "\n遮眼子  " + (eyeCover != null ? eyeCover.CoverCount : 0) + " 回";
+            visionText.text = covered ? "視界：クリア（移動ロック）" : "視界：ぼやけ";
             visionText.color = covered ? new Color(1f, 0.95f, 0.6f) : new Color(1f, 1f, 1f, 0.6f);
 
             centerText.text = BuildCenterText(gm);
@@ -49,25 +66,32 @@ namespace OverTheRainbow.UI
                 case GameState.Countdown:
                     return Mathf.CeilToInt(gm.CountdownRemaining).ToString();
 
-                case GameState.Clear:
-                    return "CLEAR\n\nタイム  " + gm.ElapsedTime.ToString("F2") + " 秒"
-                           + "\n遮眼子  " + (eyeCover != null ? eyeCover.CoverCount : 0) + " 回"
-                           + "\n\nR でリトライ";
-
                 case GameState.GameOver:
-                    return "GAME OVER\n\n" + ReasonLabel(gm.LastGameOverReason) + "\n\nR でリトライ";
+                    return "GAME OVER\n" + ReasonLabel(gm.LastGameOverReason) + "\n\n" + BuildResultText();
 
                 default:
                     return string.Empty;
             }
         }
 
+        /// <summary>リザルト（到達距離）。</summary>
+        private string BuildResultText()
+        {
+            return "到達距離  " + FormatDistance() + "\n\nR でリトライ";
+        }
+
+        private string FormatDistance()
+        {
+            float distance = distanceTracker != null ? distanceTracker.Distance : 0f;
+            return Mathf.FloorToInt(distance) + " m";
+        }
+
         private static string ReasonLabel(GameOverReason reason)
         {
             switch (reason)
             {
-                case GameOverReason.TimeUp: return "時間切れ";
                 case GameOverReason.Fell: return "穴に落ちた";
+                case GameOverReason.Darkness: return "闇に飲まれた";
                 case GameOverReason.Corruption: return "視界が侵食された";
                 default: return string.Empty;
             }
@@ -87,7 +111,7 @@ namespace OverTheRainbow.UI
 
             Font font = LoadBuiltinFont();
 
-            timerText = CreateText(canvasGo.transform, font, "Timer", 44, TextAnchor.UpperLeft,
+            distanceText = CreateText(canvasGo.transform, font, "Distance", 44, TextAnchor.UpperLeft,
                 new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(40f, -40f), new Vector2(600f, 120f));
 
             visionText = CreateText(canvasGo.transform, font, "Vision", 36, TextAnchor.UpperRight,

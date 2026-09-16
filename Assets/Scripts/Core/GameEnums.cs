@@ -6,16 +6,15 @@ namespace OverTheRainbow.Core
         Title,
         Countdown,
         Playing,
-        Clear,
-        GameOver,
+        GameOver, // クリアはない。プレイの終わりは常にゲームオーバー（企画書 4.4）
     }
 
-    /// <summary>ゲームオーバーの理由。企画書 4.4 勝敗条件。</summary>
+    /// <summary>ゲームオーバーの理由。企画書 4.4 終了条件。</summary>
     public enum GameOverReason
     {
         None,
-        TimeUp,      // 制限時間切れ
         Fell,        // 穴に落下
-        Corruption,  // 視界の侵食が最大（Phase 2 で使用）
+        Corruption,  // 視界の侵食が最大
+        Darkness,    // 後ろから迫る闇に追いつかれた
     }
 }

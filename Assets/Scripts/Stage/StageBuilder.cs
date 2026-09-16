@@ -4,10 +4,10 @@ using UnityEngine;
 namespace OverTheRainbow.Stage
 {
     /// <summary>
-    /// 一本道ステージを手続き的に生成する（企画書 4.2 ステージ構造 / Phase 1 白ボックス）。
+    /// 前方へ無限に続く一本道を、チャンク単位で生成・破棄する（企画書 4.2 ステージ構造 / 7. パラメータ表）。
     ///
     /// 穴の配置は「先に必ず通れるレーン列（解）を決め、それ以外のセルに穴を開ける」方式。
-    /// 穴の数を増やしても道が断絶しないことを保証する。
+    /// 解はチャンクをまたいで続くので、穴を増やしても道が断絶しない。
     /// </summary>
     public class StageBuilder : MonoBehaviour
     {
@@ -16,15 +16,27 @@ namespace OverTheRainbow.Stage
         [SerializeField, Min(2)] private int laneCount = 3;
         [Tooltip("1 セルの一辺 m")]
         [SerializeField, Min(0.5f)] private float cellSize = 2f;
-        [Tooltip("進行方向のセル数。全長 = cellCount * cellSize")]
-        [SerializeField, Min(4)] private int cellCount = 45;
+        [Tooltip("1 チャンクの進行方向のセル数。チャンク長 = cellsPerChunk * cellSize")]
+        [SerializeField, Min(1)] private int cellsPerChunk = 5;
 
-        [Header("穴（企画書 7. 穴の数 8〜12）")]
-        [SerializeField, Min(0)] private int holeCount = 10;
-        [Tooltip("スタート直後の安全地帯（セル数）")]
-        [SerializeField, Min(0)] private int safeCellsAtStart = 3;
-        [Tooltip("ゴール手前の安全地帯（セル数）")]
-        [SerializeField, Min(0)] private int safeCellsAtEnd = 2;
+        [Header("生成・破棄")]
+        [Tooltip("未設定なら Player タグのオブジェクト")]
+        [SerializeField] private Transform player;
+        [Tooltip("プレイヤーの何 m 先まで生成しておくか")]
+        [SerializeField, Min(0f)] private float generateAheadDistance = 50f;
+        [Tooltip("開始時にスタート地点より後ろへ生成しておく距離")]
+        [SerializeField, Min(0f)] private float initialBehindDistance = 20f;
+        [Tooltip("闇の前面からさらに何 m 後ろのチャンクを破棄するか")]
+        [SerializeField, Min(0f)] private float destroyBehindDarkness = 5f;
+
+        [Header("穴（企画書 7. パラメータ表）")]
+        [Tooltip("スタート地点からこの距離までは穴を開けない")]
+        [SerializeField, Min(0f)] private float safeDistance = 10f;
+        [SerializeField, Min(0)] private int minHolesAtStart = 1;
+        [SerializeField, Min(0)] private int maxHolesAtStart = 2;
+        [Tooltip("この距離ごとに、1 チャンクの穴の数を 1 つ増やす")]
+        [SerializeField, Min(1f)] private float difficultyStepDistance = 50f;
+        [SerializeField, Min(0)] private int maxHolesPerChunk = 4;
         [Tooltip("0 なら毎回ランダム。固定値にすると同じコースを再現できる")]
         [SerializeField] private int seed = 0;
 
@@ -38,73 +50,51 @@ namespace OverTheRainbow.Stage
         [SerializeField] private Material baseMaterial;
         [SerializeField] private Color floorColor = new Color(0.78f, 0.76f, 0.72f);
         [SerializeField] private Color wallColor = new Color(0.55f, 0.54f, 0.52f);
-        [SerializeField] private Color goalColor = new Color(0.85f, 0.12f, 0.16f);
 
         [Header("霧（企画書 6.5 通常時：フォグ濃い）")]
         [SerializeField] private bool applyFogSettings = true;
         [SerializeField] private Color fogColor = new Color(0.80f, 0.79f, 0.78f);
         [SerializeField] private float fogDensity = 0.035f;
 
-        /// <summary>プレイヤーの初期位置。MainSceneBuilder から参照する。</summary>
-        public Vector3 PlayerSpawn { get; private set; }
-        /// <summary>ゴール（赤い気球）の位置。</summary>
-        public Vector3 GoalPosition { get; private set; }
+        /// <summary>プレイヤーの初期位置（先頭セルの中央レーン、床上）。</summary>
+        public Vector3 PlayerSpawn => CellCenter(0, laneCount / 2) + Vector3.up * 1.0f;
 
+        private struct Chunk
+        {
+            public int Index;
+            public GameObject Root;
+        }
+
+        private readonly Queue<Chunk> chunks = new Queue<Chunk>();
+        private DarknessChaser darkness;
         private Transform root;
+        private System.Random rng;
+        private Material floorMat;
+        private Material wallMat;
+        private int nextChunkIndex;
+        private int solutionLane; // 直前のセルで「必ず通れる」レーン
 
         private void Awake()
         {
-            Build();
-        }
+            if (player == null)
+            {
+                var go = GameObject.FindWithTag("Player");
+                if (go != null) player = go.transform;
+            }
+            // 古いシーンで付け忘れていても闇が出るようにする
+            darkness = GetComponent<DarknessChaser>();
+            if (darkness == null) darkness = gameObject.AddComponent<DarknessChaser>();
 
-        [ContextMenu("ステージを生成し直す")]
-        public void Build()
-        {
-            ClearBuilt();
+            rng = seed == 0 ? new System.Random() : new System.Random(seed);
+            floorMat = CreateMaterial("Floor", floorColor);
+            wallMat = CreateMaterial("Wall", wallColor);
 
-            var rootGo = new GameObject("StageRoot");
-            root = rootGo.transform;
+            root = new GameObject("StageRoot").transform;
             root.SetParent(transform, false);
 
-            System.Random rng = seed == 0 ? new System.Random() : new System.Random(seed);
-
-            int[] solutionLane = BuildSolutionLanes(rng);
-            HashSet<int> holes = CarveHoles(rng, solutionLane);
-
-            Material floorMat = CreateMaterial("Floor", floorColor);
-            Material wallMat = CreateMaterial("Wall", wallColor);
-
-            for (int cell = 0; cell < cellCount; cell++)
-            {
-                for (int lane = 0; lane < laneCount; lane++)
-                {
-                    if (holes.Contains(CellKey(cell, lane))) continue; // 穴＝床を置かない
-                    CreateBox(
-                        "Floor_" + cell + "_" + lane,
-                        CellCenter(cell, lane) + Vector3.down * (cellSize * 0.25f),
-                        new Vector3(cellSize, cellSize * 0.5f, cellSize),
-                        floorMat);
-                }
-            }
-
-            if (buildSideWalls)
-            {
-                float halfWidth = laneCount * cellSize * 0.5f;
-                float length = cellCount * cellSize;
-                float centerZ = length * 0.5f - cellSize * 0.5f;
-                for (int side = -1; side <= 1; side += 2)
-                {
-                    CreateBox(
-                        side < 0 ? "Wall_Left" : "Wall_Right",
-                        new Vector3(side * (halfWidth + 0.25f), wallHeight * 0.5f - cellSize * 0.5f, centerZ),
-                        new Vector3(0.5f, wallHeight, length),
-                        wallMat);
-                }
-            }
-
-            PlayerSpawn = CellCenter(0, laneCount / 2) + Vector3.up * 1.0f;
-            GoalPosition = CellCenter(cellCount - 1, laneCount / 2) + Vector3.up * 1.4f;
-            CreateGoal(GoalPosition);
+            nextChunkIndex = -Mathf.CeilToInt(initialBehindDistance / ChunkLength);
+            solutionLane = laneCount / 2;
+            GenerateAhead();
 
             if (applyFogSettings)
             {
@@ -115,41 +105,107 @@ namespace OverTheRainbow.Stage
             }
         }
 
-        /// <summary>1 セルごとに ±1 レーンまで動く「必ず通れる道」を作る。</summary>
-        private int[] BuildSolutionLanes(System.Random rng)
+        private void Update()
         {
-            var lanes = new int[cellCount];
-            int current = laneCount / 2;
-            for (int cell = 0; cell < cellCount; cell++)
-            {
-                if (cell > 0)
-                {
-                    current = Mathf.Clamp(current + rng.Next(-1, 2), 0, laneCount - 1);
-                }
-                lanes[cell] = current;
-            }
-            return lanes;
+            GenerateAhead();
+            DestroyBehind();
         }
 
-        /// <summary>解の道以外のセルから穴を選ぶ。</summary>
-        private HashSet<int> CarveHoles(System.Random rng, int[] solutionLane)
-        {
-            var candidates = new List<int>();
-            int from = Mathf.Clamp(safeCellsAtStart, 0, cellCount);
-            int to = Mathf.Clamp(cellCount - safeCellsAtEnd, 0, cellCount);
+        private float ChunkLength => cellsPerChunk * cellSize;
 
-            for (int cell = from; cell < to; cell++)
+        private void GenerateAhead()
+        {
+            float playerZ = player != null ? player.position.z : 0f;
+            while (ChunkStartZ(nextChunkIndex) < playerZ + generateAheadDistance)
+            {
+                chunks.Enqueue(BuildChunk(nextChunkIndex));
+                nextChunkIndex++;
+            }
+        }
+
+        /// <summary>闇に飲まれたチャンクを消す。闇がなければプレイヤーから十分離れたものを消す。</summary>
+        private void DestroyBehind()
+        {
+            float limitZ = darkness != null
+                ? darkness.FrontZ - destroyBehindDarkness
+                : (player != null ? player.position.z : 0f) - initialBehindDistance;
+
+            // チャンクの奥側の端（= 次のチャンクの手前端）が limitZ より後ろなら丸ごと消す
+            while (chunks.Count > 0 && ChunkStartZ(chunks.Peek().Index + 1) < limitZ)
+            {
+                Destroy(chunks.Dequeue().Root);
+            }
+        }
+
+        private Chunk BuildChunk(int chunkIndex)
+        {
+            var chunkRoot = new GameObject("Chunk_" + chunkIndex);
+            chunkRoot.transform.SetParent(root, false);
+
+            int firstCell = chunkIndex * cellsPerChunk;
+            HashSet<int> holes = CarveHoles(chunkIndex, firstCell);
+
+            for (int cell = firstCell; cell < firstCell + cellsPerChunk; cell++)
             {
                 for (int lane = 0; lane < laneCount; lane++)
                 {
-                    if (lane == solutionLane[cell]) continue;
-                    candidates.Add(CellKey(cell, lane));
+                    if (holes.Contains(CellKey(cell - firstCell, lane))) continue; // 穴＝床を置かない
+                    CreateBox(
+                        chunkRoot.transform,
+                        "Floor_" + cell + "_" + lane,
+                        CellCenter(cell, lane) + Vector3.down * (cellSize * 0.25f),
+                        new Vector3(cellSize, cellSize * 0.5f, cellSize),
+                        floorMat);
                 }
             }
 
-            // Fisher-Yates で先頭 holeCount 個だけ確定させる
+            if (buildSideWalls)
+            {
+                float halfWidth = laneCount * cellSize * 0.5f;
+                float centerZ = ChunkStartZ(chunkIndex) + ChunkLength * 0.5f;
+                for (int side = -1; side <= 1; side += 2)
+                {
+                    CreateBox(
+                        chunkRoot.transform,
+                        side < 0 ? "Wall_Left" : "Wall_Right",
+                        new Vector3(side * (halfWidth + 0.25f), wallHeight * 0.5f - cellSize * 0.5f, centerZ),
+                        new Vector3(0.5f, wallHeight, ChunkLength),
+                        wallMat);
+                }
+            }
+
+            return new Chunk { Index = chunkIndex, Root = chunkRoot };
+        }
+
+        /// <summary>
+        /// 1 セルごとに ±1 レーンまで動く「必ず通れる道」を決め、それ以外のセルから穴を選ぶ。
+        /// レーンを移るセルでは移る前のレーンも残し、斜めの角だけでつながる道にならないようにする。
+        /// </summary>
+        private HashSet<int> CarveHoles(int chunkIndex, int firstCell)
+        {
+            var candidates = new List<int>();
+            for (int cell = firstCell; cell < firstCell + cellsPerChunk; cell++)
+            {
+                int previousLane = solutionLane;
+                solutionLane = Mathf.Clamp(solutionLane + rng.Next(-1, 2), 0, laneCount - 1);
+
+                if (CellCenter(cell, 0).z < safeDistance) continue;
+
+                for (int lane = 0; lane < laneCount; lane++)
+                {
+                    if (lane == solutionLane || lane == previousLane) continue;
+                    candidates.Add(CellKey(cell - firstCell, lane));
+                }
+            }
+
+            // 距離に応じて穴を増やす（企画書 4.2：距離に応じて難易度を段階的に上げる）
+            int level = Mathf.Max(0, Mathf.FloorToInt(ChunkStartZ(chunkIndex) / difficultyStepDistance));
+            int min = Mathf.Min(minHolesAtStart + level, maxHolesPerChunk);
+            int max = Mathf.Min(maxHolesAtStart + level, maxHolesPerChunk);
+            int take = Mathf.Min(rng.Next(min, max + 1), candidates.Count);
+
+            // Fisher-Yates で先頭 take 個だけ確定させる
             var holes = new HashSet<int>();
-            int take = Mathf.Min(holeCount, candidates.Count);
             for (int i = 0; i < take; i++)
             {
                 int j = rng.Next(i, candidates.Count);
@@ -158,17 +214,13 @@ namespace OverTheRainbow.Stage
                 candidates[j] = tmp;
                 holes.Add(candidates[i]);
             }
-
-            if (take < holeCount)
-            {
-                Debug.LogWarning("[StageBuilder] 穴を " + holeCount + " 個置けません（最大 " + candidates.Count + " 個）。コースを長くするかレーンを増やしてください。", this);
-            }
             return holes;
         }
 
-        private int CellKey(int cell, int lane)
+        /// <summary>チャンク内でのセルの通し番号。</summary>
+        private int CellKey(int cellInChunk, int lane)
         {
-            return cell * laneCount + lane;
+            return cellInChunk * laneCount + lane;
         }
 
         private Vector3 CellCenter(int cell, int lane)
@@ -178,32 +230,24 @@ namespace OverTheRainbow.Stage
             return new Vector3(x, 0f, z);
         }
 
-        private void CreateBox(string name, Vector3 center, Vector3 size, Material mat)
+        /// <summary>チャンクの手前端の Z。セルの中心が cell * cellSize なので半セルずれる。</summary>
+        private float ChunkStartZ(int chunkIndex)
+        {
+            return chunkIndex * ChunkLength - cellSize * 0.5f;
+        }
+
+        private static void CreateBox(Transform parent, string name, Vector3 center, Vector3 size, Material mat)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = name;
-            go.transform.SetParent(root, false);
+            go.transform.SetParent(parent, false);
             go.transform.localPosition = center;
             go.transform.localScale = size;
             go.GetComponent<MeshRenderer>().sharedMaterial = mat;
         }
 
-        private void CreateGoal(Vector3 position)
-        {
-            var balloon = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            balloon.name = "Goal_RedBalloon";
-            balloon.transform.SetParent(root, false);
-            balloon.transform.localPosition = position;
-            balloon.transform.localScale = Vector3.one * 1.2f;
-            balloon.GetComponent<MeshRenderer>().sharedMaterial = CreateMaterial("Goal", goalColor);
-
-            var col = balloon.GetComponent<SphereCollider>();
-            col.isTrigger = true;
-            col.radius = 0.9f; // 見た目より少し広く取り、掠めても取れるようにする
-            balloon.AddComponent<GoalTrigger>();
-        }
-
-        private Material CreateMaterial(string name, Color color)
+        /// <summary>baseMaterial を複製して色を変える。DarknessChaser からも使う。</summary>
+        public Material CreateMaterial(string name, Color color)
         {
             // 未設定のときはエディタ上でだけ動く保険（ビルドではシェーダが見つからないことがある）
             var mat = baseMaterial != null
@@ -212,14 +256,6 @@ namespace OverTheRainbow.Stage
             mat.name = "Mat_" + name;
             mat.color = color;
             return mat;
-        }
-
-        private void ClearBuilt()
-        {
-            var existing = transform.Find("StageRoot");
-            if (existing == null) return;
-            if (Application.isPlaying) Destroy(existing.gameObject);
-            else DestroyImmediate(existing.gameObject);
         }
     }
 }

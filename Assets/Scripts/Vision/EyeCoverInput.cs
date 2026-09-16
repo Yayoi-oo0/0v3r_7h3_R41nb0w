@@ -31,9 +31,6 @@ namespace OverTheRainbow.Vision
         /// <summary>平滑化後の「片目を覆っているか」。ゲームロジックはこちらだけを見る。</summary>
         public bool IsEyeCovered { get; private set; }
 
-        /// <summary>遮眼子を当てた回数。リザルト表示用（企画書 5. リザルト）。</summary>
-        public int CoverCount { get; private set; }
-
         /// <summary>遮眼子を当てている合計秒数。</summary>
         public float TotalCoveredSeconds { get; private set; }
 
@@ -41,6 +38,12 @@ namespace OverTheRainbow.Vision
         public bool IsSourceAvailable => source != null && source.IsAvailable;
 
         public string SourceName => source != null ? source.SourceName : "None";
+
+        /// <summary>
+        /// true の間は新しく遮眼子を当てても IsEyeCovered にならない（当てている最中の状態は変えない）。
+        /// 侵食が回復しきるまで連続使用させないために CorruptionSystem が切り替える。
+        /// </summary>
+        public bool IsCoverLocked { get; set; }
 
         public event Action CoverBegan;
         public event Action CoverEnded;
@@ -68,18 +71,12 @@ namespace OverTheRainbow.Vision
             lastRaw = raw;
 
             int required = IsEyeCovered ? framesToUncover : framesToCover;
-            if (rawCovered != IsEyeCovered && agreeingFrames >= required)
+            bool blocked = rawCovered && IsCoverLocked;
+            if (rawCovered != IsEyeCovered && agreeingFrames >= required && !blocked)
             {
                 IsEyeCovered = rawCovered;
-                if (IsEyeCovered)
-                {
-                    CoverCount++;
-                    CoverBegan?.Invoke();
-                }
-                else
-                {
-                    CoverEnded?.Invoke();
-                }
+                if (IsEyeCovered) CoverBegan?.Invoke();
+                else CoverEnded?.Invoke();
             }
 
             if (IsEyeCovered) TotalCoveredSeconds += Time.deltaTime;

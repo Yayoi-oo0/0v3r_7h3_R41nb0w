@@ -47,6 +47,9 @@ namespace OverTheRainbow.Player
         {
             controller = GetComponent<CharacterController>();
             if (eyeCover == null) eyeCover = FindObjectOfType<EyeCoverInput>();
+
+            // 古いシーンで付け忘れていても距離を数えられるようにする
+            if (GetComponent<DistanceTracker>() == null) gameObject.AddComponent<DistanceTracker>();
             if (cameraPivot == null)
             {
                 var cam = GetComponentInChildren<Camera>();

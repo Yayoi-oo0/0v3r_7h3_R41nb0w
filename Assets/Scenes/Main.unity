@@ -132,6 +132,7 @@ GameObject:
   m_Component:
   - component: {fileID: 166584171}
   - component: {fileID: 166584170}
+  - component: {fileID: 166584172}
   m_Layer: 0
   m_Name: Stage
   m_TagString: Untagged
@@ -153,17 +154,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   laneCount: 3
   cellSize: 2
-  cellCount: 45
-  holeCount: 10
-  safeCellsAtStart: 3
-  safeCellsAtEnd: 2
+  cellsPerChunk: 5
+  player: {fileID: 0}
+  generateAheadDistance: 50
+  initialBehindDistance: 20
+  destroyBehindDarkness: 5
+  safeDistance: 10
+  minHolesAtStart: 1
+  maxHolesAtStart: 2
+  difficultyStepDistance: 50
+  maxHolesPerChunk: 4
   seed: 0
   buildSideWalls: 1
   wallHeight: 3
   baseMaterial: {fileID: 2100000, guid: 030ace086a742a14eb76d82f9c386d86, type: 2}
   floorColor: {r: 0.78, g: 0.76, b: 0.72, a: 1}
   wallColor: {r: 0.55, g: 0.54, b: 0.52, a: 1}
-  goalColor: {r: 0.85, g: 0.12, b: 0.16, a: 1}
   applyFogSettings: 1
   fogColor: {r: 0.8, g: 0.79, b: 0.78, a: 1}
   fogDensity: 0.035
@@ -182,6 +188,25 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &166584172
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 166584169}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cd04583f456ff644781b108d7dd55ca3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  player: {fileID: 0}
+  startDistanceBehind: 10
+  startSpeed: 1.5
+  speedGainPer100m: 0.3
+  maxSpeed: 3.5
+  color: {r: 0, g: 0, b: 0, a: 1}
+  visualSize: {x: 400, y: 400, z: 80}
 --- !u!1 &566930928
 GameObject:
   m_ObjectHideFlags: 0
@@ -216,6 +241,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   eyeCover: {fileID: 0}
+  distanceTracker: {fileID: 0}
+  darkness: {fileID: 0}
   showDebugHelp: 1
 --- !u!114 &566930930
 MonoBehaviour:
@@ -258,7 +285,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8e2e8d564ab0ac468332cfa0831c6a6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  timeLimit: 120
   countdownSeconds: 3
   startImmediately: 1
   allowQuickRestart: 1
@@ -290,8 +316,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   eyeCover: {fileID: 566930930}
-  corruptionPerSecond: 0.1
-  recoveryPerSecond: 0.04
+  corruptionPerSecond: 0.3
+  recoveryPerSecond: 0.5
 --- !u!1 &1065467027
 GameObject:
   m_ObjectHideFlags: 0
@@ -302,6 +328,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1065467029}
   - component: {fileID: 1065467028}
+  - component: {fileID: 1065467030}
   m_Layer: 0
   m_Name: Directional Light
   m_TagString: Untagged
@@ -386,6 +413,29 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1065467030
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1065467027}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Version: 3
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_LightLayerMask: 1
+  m_RenderingLayers: 1
+  m_CustomShadowLayers: 0
+  m_ShadowLayerMask: 1
+  m_ShadowRenderingLayers: 1
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
 --- !u!1 &1263543325
 GameObject:
   m_ObjectHideFlags: 0
@@ -623,6 +673,7 @@ MonoBehaviour:
   intensityAtMax: 0.75
   smoothnessAtMin: 0.2
   smoothnessAtMax: 1
+  fullScreenStart: 0.7
 --- !u!114 &1431623173
 MonoBehaviour:
   m_ObjectHideFlags: 0

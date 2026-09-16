@@ -66,6 +66,7 @@ namespace OverTheRainbow.EditorTools
         {
             var go = new GameObject("Stage");
             var builder = go.AddComponent<StageBuilder>();
+            go.AddComponent<DarknessChaser>();
 
             var baseMat = AssetDatabase.LoadAssetAtPath<Material>(UrpSetup.StageBaseMaterialPath);
             if (baseMat != null) UrpSetup.AssignBaseMaterial(builder, baseMat);
@@ -98,6 +99,7 @@ namespace OverTheRainbow.EditorTools
             controller.stepOffset = 0.3f;
 
             player.AddComponent<PlayerController>();
+            player.AddComponent<DistanceTracker>();
 
             var camGo = new GameObject("PlayerCamera");
             camGo.transform.SetParent(player.transform, false);
