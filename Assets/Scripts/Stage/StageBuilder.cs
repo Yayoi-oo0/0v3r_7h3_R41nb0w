@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace OverTheRainbow.Stage
@@ -51,11 +51,6 @@ namespace OverTheRainbow.Stage
         [SerializeField] private Color floorColor = new Color(0.78f, 0.76f, 0.72f);
         [SerializeField] private Color wallColor = new Color(0.55f, 0.54f, 0.52f);
 
-        [Header("霧（企画書 6.5 通常時：フォグ濃い）")]
-        [SerializeField] private bool applyFogSettings = true;
-        [SerializeField] private Color fogColor = new Color(0.80f, 0.79f, 0.78f);
-        [SerializeField] private float fogDensity = 0.035f;
-
         /// <summary>プレイヤーの初期位置（先頭セルの中央レーン、床上）。</summary>
         public Vector3 PlayerSpawn => CellCenter(0, laneCount / 2) + Vector3.up * 1.0f;
 
@@ -95,14 +90,6 @@ namespace OverTheRainbow.Stage
             nextChunkIndex = -Mathf.CeilToInt(initialBehindDistance / ChunkLength);
             solutionLane = laneCount / 2;
             GenerateAhead();
-
-            if (applyFogSettings)
-            {
-                RenderSettings.fog = true;
-                RenderSettings.fogMode = FogMode.ExponentialSquared;
-                RenderSettings.fogColor = fogColor;
-                RenderSettings.fogDensity = fogDensity;
-            }
         }
 
         private void Update()

@@ -1,4 +1,4 @@
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using OverTheRainbow.Core;
@@ -110,8 +110,8 @@ namespace OverTheRainbow.EditorTools
             cam.fieldOfView = 70f;
             cam.nearClipPlane = 0.05f;
             cam.farClipPlane = 300f;
-            cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(0.80f, 0.79f, 0.78f); // フォグと揃える
+            cam.clearFlags = CameraClearFlags.Skybox;
+            cam.backgroundColor = new Color(0.80f, 0.79f, 0.78f); // 遠景の白っぽい地平
 
             camGo.AddComponent<AudioListener>();
         }

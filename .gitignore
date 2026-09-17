@@ -104,3 +104,8 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# AllSkyFree: 使用しているスカイボックスのみ管理（パック全体は約320MB）
+/[Aa]ssets/AllSkyFree/*
+!/[Aa]ssets/AllSkyFree/Cartoon Base BlueSky/
+!/[Aa]ssets/AllSkyFree/Cartoon Base BlueSky.meta
