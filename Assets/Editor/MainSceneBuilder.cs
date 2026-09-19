@@ -30,6 +30,7 @@ namespace OverTheRainbow.EditorTools
             CreatePlayer();
             VisionBlurSetup.ApplyToOpenScene(); // カメラと EyeCoverInput ができてから
             CorruptionVignetteSetup.ApplyToOpenScene();
+            VhsPostEffectSetup.ApplyToOpenScene();
 
             System.IO.Directory.CreateDirectory("Assets/Scenes");
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -70,6 +71,8 @@ namespace OverTheRainbow.EditorTools
 
             var baseMat = AssetDatabase.LoadAssetAtPath<Material>(UrpSetup.StageBaseMaterialPath);
             if (baseMat != null) UrpSetup.AssignBaseMaterial(builder, baseMat);
+
+            RoadLookSetup.Apply(builder);
         }
 
         private static void CreateSystems()

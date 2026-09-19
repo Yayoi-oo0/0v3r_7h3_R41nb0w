@@ -46,8 +46,9 @@ namespace OverTheRainbow.Vision
             material = CoreUtils.CreateEngineMaterial(shader);
             pass = new VisionBlurPass(settings, material)
             {
-                // ビネットなどのポストプロセスより前。ぼかしたあとの絵にビネットが乗る
-                renderPassEvent = RenderPassEvent.BeforeRenderingPostProcessing
+                // ビネットなどのポストプロセスより前。ぼかしたあとの絵にビネットが乗る。
+                // 日時表示（-2）と VHS 劣化（-1）より先に描くため、番号で順序を固定する
+                renderPassEvent = RenderPassEvent.BeforeRenderingPostProcessing - 3
             };
         }
 

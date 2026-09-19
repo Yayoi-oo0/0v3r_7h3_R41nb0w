@@ -1,0 +1,12 @@
+<!--
+  ビルド時のコード削除（Strip Engine Code / Managed Stripping）から守る型の一覧。
+
+  床や壁は StageBuilder が実行時に GameObject.CreatePrimitive で作るため、
+  シーンやアセットに BoxCollider が一つも無い。Unity はそれを「未使用」と判断して削ってしまい、
+  WebGL ビルドでは床に当たり判定が付かず、開始直後にすり抜けて落ちていた。
+-->
+<linker>
+  <assembly fullname="UnityEngine.PhysicsModule">
+    <type fullname="UnityEngine.BoxCollider" preserve="all" />
+  </assembly>
+</linker>

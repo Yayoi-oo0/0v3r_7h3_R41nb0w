@@ -51,6 +51,23 @@ namespace OverTheRainbow.Stage
         [SerializeField] private Color floorColor = new Color(0.78f, 0.76f, 0.72f);
         [SerializeField] private Color wallColor = new Color(0.55f, 0.54f, 0.52f);
 
+        [Header("道路")]
+        [Tooltip("真上から見た道路テクスチャ。横幅いっぱいでコース 1 本ぶん。未設定なら白ボックスのまま")]
+        [SerializeField] private Texture roadTexture;
+        [SerializeField] private Texture roadNormalMap;
+        [Tooltip("テクスチャ 1 枚が覆う進行方向の距離 m。道幅（レーン数 × セル）と揃えると絵の比率が崩れない")]
+        [SerializeField, Min(0.5f)] private float roadTextureLength = 6f;
+
+        [Header("奈落（穴の下）")]
+        [Tooltip("コースの下に暗い床を敷く。無いと穴から空が透けて、ぼやけた視界でも穴の位置が分かってしまう")]
+        [SerializeField] private bool buildAbyss = true;
+        [Tooltip("床面からの深さ m。PlayerController の fallThresholdY より深くする。浅いと、落下が止まる前に奈落を突き抜けて裏から空が見える")]
+        [SerializeField, Min(1f)] private float abyssDepth = 6f;
+        [Tooltip("コースの左右にはみ出させる幅 m。穴を斜めに覗いたとき、奈落の端から空が見えないように")]
+        [SerializeField, Min(0f)] private float abyssSideMargin = 30f;
+        [Tooltip("真っ黒だと逆に穴が目立つ。アスファルトより一段暗いくらいにすると、ぼやけた視界で溶け込む")]
+        [SerializeField] private Color abyssColor = new Color(0.15f, 0.15f, 0.14f);
+
         /// <summary>プレイヤーの初期位置（先頭セルの中央レーン、床上）。</summary>
         public Vector3 PlayerSpawn => CellCenter(0, laneCount / 2) + Vector3.up * 1.0f;
 
@@ -66,6 +83,9 @@ namespace OverTheRainbow.Stage
         private System.Random rng;
         private Material floorMat;
         private Material wallMat;
+        private Material[,] roadMats; // [レーン, 進行方向の位置] ごとに切り出す位置が違う
+        private int roadTilesAlong;
+        private Transform abyss;
         private int nextChunkIndex;
         private int solutionLane; // 直前のセルで「必ず通れる」レーン
 
@@ -83,9 +103,12 @@ namespace OverTheRainbow.Stage
             rng = seed == 0 ? new System.Random() : new System.Random(seed);
             floorMat = CreateMaterial("Floor", floorColor);
             wallMat = CreateMaterial("Wall", wallColor);
+            CreateRoadMaterials();
 
             root = new GameObject("StageRoot").transform;
             root.SetParent(transform, false);
+
+            if (buildAbyss) CreateAbyss();
 
             nextChunkIndex = -Mathf.CeilToInt(initialBehindDistance / ChunkLength);
             solutionLane = laneCount / 2;
@@ -96,6 +119,43 @@ namespace OverTheRainbow.Stage
         {
             GenerateAhead();
             DestroyBehind();
+            FollowAbyss();
+        }
+
+        /// <summary>
+        /// コースの下に、プレイヤーについて動く暗い床を敷く。見た目だけで当たり判定は持たせない。
+        /// 持たせると落下の挙動に割り込み、穴に落ちてもゲームオーバーにならないことがあった。
+        /// 突き抜けないよう、ゲームオーバー後の落下は PlayerController 側で止めている。
+        /// </summary>
+        private void CreateAbyss()
+        {
+            float width = laneCount * cellSize + abyssSideMargin * 2f;
+            // 生成済みの範囲（前方・後方）を、プレイヤーがどこにいても覆える長さ
+            float length = 2f * (Mathf.Max(generateAheadDistance, initialBehindDistance) + ChunkLength);
+            const float thickness = 1f;
+
+            var go = CreateBox(transform, "Abyss",
+                new Vector3(0f, -abyssDepth - thickness * 0.5f, 0f),
+                new Vector3(width, thickness, length),
+                CreateMaterial("Abyss", abyssColor));
+            Destroy(go.GetComponent<Collider>());
+
+            // 床の影が落ちると、穴の真下だけ日が差して明るくなり、かえって穴の位置が浮く
+            var abyssRenderer = go.GetComponent<MeshRenderer>();
+            abyssRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            abyssRenderer.receiveShadows = false;
+
+            abyss = go.transform;
+            FollowAbyss();
+        }
+
+        private void FollowAbyss()
+        {
+            if (abyss == null || player == null) return;
+
+            Vector3 p = abyss.localPosition;
+            p.z = player.position.z;
+            abyss.localPosition = p;
         }
 
         private float ChunkLength => cellsPerChunk * cellSize;
@@ -103,11 +163,18 @@ namespace OverTheRainbow.Stage
         private void GenerateAhead()
         {
             float playerZ = player != null ? player.position.z : 0f;
+            bool built = false;
             while (ChunkStartZ(nextChunkIndex) < playerZ + generateAheadDistance)
             {
                 chunks.Enqueue(BuildChunk(nextChunkIndex));
                 nextChunkIndex++;
+                built = true;
             }
+
+            // Auto Sync Transforms が無効なので、作った床の当たり判定は次の物理ステップまで原点に残る。
+            // WebGL ビルドでは最初のフレームに物理ステップが走らないことがあり、
+            // 正しい床が無いままプレイヤーの落下処理が進んで、開始直後にすり抜けていた
+            if (built) Physics.SyncTransforms();
         }
 
         /// <summary>闇に飲まれたチャンクを消す。闇がなければプレイヤーから十分離れたものを消す。</summary>
@@ -142,7 +209,7 @@ namespace OverTheRainbow.Stage
                         "Floor_" + cell + "_" + lane,
                         CellCenter(cell, lane) + Vector3.down * (cellSize * 0.25f),
                         new Vector3(cellSize, cellSize * 0.5f, cellSize),
-                        floorMat);
+                        FloorMaterial(cell, lane));
                 }
             }
 
@@ -223,7 +290,7 @@ namespace OverTheRainbow.Stage
             return chunkIndex * ChunkLength - cellSize * 0.5f;
         }
 
-        private static void CreateBox(Transform parent, string name, Vector3 center, Vector3 size, Material mat)
+        private static GameObject CreateBox(Transform parent, string name, Vector3 center, Vector3 size, Material mat)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = name;
@@ -231,6 +298,58 @@ namespace OverTheRainbow.Stage
             go.transform.localPosition = center;
             go.transform.localScale = size;
             go.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            return go;
+        }
+
+        /// <summary>
+        /// 道路テクスチャを、レーンと進行方向の位置で切り分けたマテリアルを用意する。
+        ///
+        /// 床はセルごとに独立したキューブで、UV は面ごとに 0〜1 しかない。
+        /// そのまま貼るとレーンの数だけ道路が横に並んでしまうので、
+        /// Tiling / Offset で「1 枚の道路のどの部分か」をセルごとに指定する。
+        /// </summary>
+        private void CreateRoadMaterials()
+        {
+            if (roadTexture == null) return;
+
+            // 継ぎ目を出さないため、テクスチャ 1 枚をセルの整数個で割り切る
+            roadTilesAlong = Mathf.Max(1, Mathf.RoundToInt(roadTextureLength / cellSize));
+
+            var scale = new Vector2(1f / laneCount, 1f / roadTilesAlong);
+            roadMats = new Material[laneCount, roadTilesAlong];
+
+            for (int lane = 0; lane < laneCount; lane++)
+            {
+                for (int step = 0; step < roadTilesAlong; step++)
+                {
+                    // 色を乗せるとアスファルトが染まるので、道路のときだけ白にする
+                    var mat = CreateMaterial("Road_" + lane + "_" + step, Color.white);
+                    mat.mainTexture = roadTexture;
+                    mat.mainTextureScale = scale;
+                    mat.mainTextureOffset = new Vector2((float)lane / laneCount, (float)step / roadTilesAlong);
+
+                    if (roadNormalMap != null)
+                    {
+                        mat.SetTexture("_BumpMap", roadNormalMap);
+                        mat.SetTextureScale("_BumpMap", scale);
+                        mat.SetTextureOffset("_BumpMap", mat.mainTextureOffset);
+                        // URP/Lit は法線マップをキーワードで切り替える。立てないと貼っても効かない
+                        mat.EnableKeyword("_NORMALMAP");
+                    }
+
+                    roadMats[lane, step] = mat;
+                }
+            }
+        }
+
+        /// <summary>そのセルが道路のどの部分かを返す。道路テクスチャが無ければ従来の白い床。</summary>
+        private Material FloorMaterial(int cell, int lane)
+        {
+            if (roadMats == null) return floorMat;
+
+            // スタート地点より後ろのセルは cell が負になるので、剰余を 0 以上に寄せる
+            int step = ((cell % roadTilesAlong) + roadTilesAlong) % roadTilesAlong;
+            return roadMats[lane, step];
         }
 
         /// <summary>baseMaterial を複製して色を変える。DarknessChaser からも使う。</summary>

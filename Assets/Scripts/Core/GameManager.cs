@@ -87,6 +87,7 @@ namespace OverTheRainbow.Core
         {
             if (State != GameState.Playing && State != GameState.Countdown) return;
             LastGameOverReason = reason;
+            Debug.Log("[GameManager] ゲームオーバー: " + reason);
             SetState(GameState.GameOver);
         }
 

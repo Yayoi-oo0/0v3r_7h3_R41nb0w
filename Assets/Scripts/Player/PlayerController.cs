@@ -76,6 +76,9 @@ namespace OverTheRainbow.Player
             bool canLook = acceptsInput && !ExternalMovementLock && (!covered || allowLookWhileCovered);
             if (canLook) UpdateLook();
 
+            // ゲームオーバー後は落下も止める。落ち続けるとコース下の奈落を抜け、裏から空が見えてしまう
+            if (gm != null && gm.State == GameState.GameOver) return;
+
             Vector3 horizontalVelocity = Vector3.zero;
             if (acceptsInput && !IsMovementLocked)
             {

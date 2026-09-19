@@ -18,6 +18,72 @@ MonoBehaviour:
     iterations: 4
     spread: 1.5
   shader: {fileID: 4800000, guid: 9e972b50a56588946881ccd37f4af19c, type: 3}
+--- !u!114 &-1605290674714955629
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6969ec2165de3f548bec6a109d44a43f, type: 3}
+  m_Name: VhsPostEffect
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  settings:
+    bleeding: 0.8
+    fringing: 1
+    scanline: 0.125
+    scanlineCount: 480
+    blockNoise: 0.5
+    tapeNoise: 0.15
+    saturation: 0.75
+    contrast: 1.15
+    gain: 0.95
+  shader: {fileID: 4800000, guid: 133ba22ae4d85124fae300da5f5614b5, type: 3}
+--- !u!114 &-353689549926822436
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6b3d386ba5cd94485973aee1479b272e, type: 3}
+  m_Name: VhsOverlayUI
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  settings:
+    passTag: VhsOverlayUI
+    Event: 548
+    filterSettings:
+      RenderQueueType: 1
+      LayerMask:
+        serializedVersion: 2
+        m_Bits: 256
+      PassNames: []
+    overrideMaterial: {fileID: 0}
+    overrideMaterialPassIndex: 0
+    overrideShader: {fileID: 0}
+    overrideShaderPassIndex: 0
+    overrideMode: 1
+    overrideDepthState: 0
+    depthCompareFunction: 4
+    enableWrite: 1
+    stencilSettings:
+      overrideStencilState: 0
+      stencilReference: 0
+      stencilCompareFunction: 8
+      passOperation: 0
+      failOperation: 0
+      zFailOperation: 0
+    cameraSettings:
+      overrideCamera: 0
+      restoreCamera: 1
+      offset: {x: 0, y: 0, z: 0, w: 0}
+      cameraFieldOfView: 60
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -35,7 +101,9 @@ MonoBehaviour:
     hdrDebugViewPS: {fileID: 4800000, guid: 573620ae32aec764abd4d728906d2587, type: 3}
   m_RendererFeatures:
   - {fileID: -4204630857886920164}
-  m_RendererFeatureMap: 1c1201088326a6c5
+  - {fileID: -1605290674714955629}
+  - {fileID: -353689549926822436}
+  m_RendererFeatureMap: 1c1201088326a6c593305ef4a2dcb8e9dc0dd86f3a7117fb
   m_UseNativeRenderPass: 0
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   xrSystemData: {fileID: 11400000, guid: 60e1133243b97e347b653163a8c01b64, type: 2}
@@ -63,7 +131,7 @@ MonoBehaviour:
     m_Bits: 4294967295
   m_TransparentLayerMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 4294967039
   m_DefaultStencilState:
     overrideStencilState: 0
     stencilReference: 0

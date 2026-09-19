@@ -170,6 +170,13 @@ MonoBehaviour:
   baseMaterial: {fileID: 2100000, guid: 030ace086a742a14eb76d82f9c386d86, type: 2}
   floorColor: {r: 0.86415094, g: 0.82012814, b: 0.82012814, a: 1}
   wallColor: {r: 0.78867924, g: 0.78867924, b: 0.78867924, a: 1}
+  roadTexture: {fileID: 2800000, guid: 569aa5e3c5b35dd4a95a1c27836396fd, type: 3}
+  roadNormalMap: {fileID: 2800000, guid: 3b88c54e1b097ea4f9cbaa7791d4eb88, type: 3}
+  roadTextureLength: 6
+  buildAbyss: 1
+  abyssDepth: 6
+  abyssSideMargin: 30
+  abyssColor: {r: 0.2528302, g: 0.2528302, b: 0.24949093, a: 1}
 --- !u!4 &166584171
 Transform:
   m_ObjectHideFlags: 0
@@ -315,6 +322,55 @@ MonoBehaviour:
   eyeCover: {fileID: 566930930}
   corruptionPerSecond: 0.3
   recoveryPerSecond: 0.5
+--- !u!1 &1037795444
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1037795446}
+  - component: {fileID: 1037795445}
+  m_Layer: 0
+  m_Name: VhsDate
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1037795445
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1037795444}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6412c90d6406e654fb3641a63b3fc42a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  font: {fileID: 12800000, guid: 00735d44b6b76524786f388f66720972, type: 3}
+  fontSize: 28
+  pixelScale: 2.5
+  alpha: 0.8
+  margin: {x: 60, y: 60}
+--- !u!4 &1037795446
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1037795444}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1065467027
 GameObject:
   m_ObjectHideFlags: 0
@@ -777,3 +833,4 @@ SceneRoots:
   - {fileID: 1558008050}
   - {fileID: 1263543328}
   - {fileID: 1431623174}
+  - {fileID: 1037795446}
