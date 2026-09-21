@@ -109,3 +109,9 @@ InitTestScene*.unity*
 /[Aa]ssets/AllSkyFree/*
 !/[Aa]ssets/AllSkyFree/Cartoon Base BlueSky/
 !/[Aa]ssets/AllSkyFree/Cartoon Base BlueSky.meta
+
+# MediaPipe Unity Plugin 本体（277MB）。Tools/fetch_mediapipe_plugin.command で取得する
+ThirdParty/*.tgz
+
+# macOS が勝手に作るもの
+.DS_Store

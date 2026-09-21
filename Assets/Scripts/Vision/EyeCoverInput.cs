@@ -17,6 +17,8 @@ namespace OverTheRainbow.Vision
         [Header("入力元")]
         [Tooltip("未設定なら同じ GameObject から IEyeCoverSource を探す")]
         [SerializeField] private MonoBehaviour sourceBehaviour;
+        [Tooltip("主入力が使用不能なとき（カメラ未接続、Python 未起動）に使う予備。通常はキーボード")]
+        [SerializeField] private MonoBehaviour fallbackSourceBehaviour;
 
         [Header("平滑化（企画書 7. 状態遷移の連続フレーム数）")]
         [Tooltip("Open → Covered に必要な連続フレーム数")]
@@ -25,6 +27,7 @@ namespace OverTheRainbow.Vision
         [SerializeField, Min(1)] private int framesToUncover = 3;
 
         private IEyeCoverSource source;
+        private IEyeCoverSource fallbackSource;
         private int agreeingFrames;
         private EyeState lastRaw = EyeState.Open;
 
@@ -37,7 +40,20 @@ namespace OverTheRainbow.Vision
         /// <summary>入力元が使用不能（カメラ未接続など）。キャリブレーション画面の判定に使う。</summary>
         public bool IsSourceAvailable => source != null && source.IsAvailable;
 
-        public string SourceName => source != null ? source.SourceName : "None";
+        /// <summary>予備に落ちているか。体験会でトラッカーが落ちたことに気付くための表示用。</summary>
+        public bool IsUsingFallback => !IsSourceAvailable && fallbackSource != null && fallbackSource.IsAvailable;
+
+        /// <summary>今フレーム実際に読んでいる入力元。主入力が使えなければ予備。</summary>
+        public IEyeCoverSource ActiveSource => IsSourceAvailable ? source : fallbackSource;
+
+        public string SourceName
+        {
+            get
+            {
+                IEyeCoverSource active = ActiveSource;
+                return active != null ? active.SourceName : "None";
+            }
+        }
 
         /// <summary>
         /// true の間は新しく遮眼子を当てても IsEyeCovered にならない（当てている最中の状態は変えない）。
@@ -56,13 +72,17 @@ namespace OverTheRainbow.Vision
             {
                 Debug.LogError("[EyeCoverInput] IEyeCoverSource が見つかりません。KeyboardEyeCoverSource を同じ GameObject に付けてください。", this);
             }
+
+            fallbackSource = fallbackSourceBehaviour as IEyeCoverSource;
+            if (fallbackSource == source) fallbackSource = null;
         }
 
         private void Update()
         {
-            if (source == null) return;
+            IEyeCoverSource active = ActiveSource;
+            if (active == null) return;
 
-            EyeState raw = source.IsAvailable ? source.ReadRaw() : EyeState.Lost;
+            EyeState raw = active.IsAvailable ? active.ReadRaw() : EyeState.Lost;
             // Lost は安全側（遮眼子なし）に倒す。誤って視界クリアのまま固まるのを防ぐ。
             bool rawCovered = raw == EyeState.Covered;
 

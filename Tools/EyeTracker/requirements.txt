@@ -1,0 +1,8 @@
+# mediapipe は 0.10 系に固定する。
+# 1.0.x は macOS (Apple Silicon) で FaceLandmarker の初回推論時に
+#   F0000 graph_service.h:139] Check failed: service_ Service is unavailable.
+# で異常終了することを確認した（2026-09-20、mediapipe 1.0.1 / macOS 14）。
+mediapipe>=0.10.9,<0.11
+# OpenCV も 4 系に固定（5.0 は未検証）
+opencv-python>=4.8,<5
+numpy>=1.24

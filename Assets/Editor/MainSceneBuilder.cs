@@ -80,9 +80,9 @@ namespace OverTheRainbow.EditorTools
             var go = new GameObject("GameSystems");
             go.AddComponent<GameManager>();
 
-            // 遮眼子入力：Phase 1 はキーボード。Phase 3 で MediaPipe の Source に差し替える。
-            go.AddComponent<KeyboardEyeCoverSource>();
+            // 遮眼子入力：本命は Python トラッカーからの UDP 受信、予備がキーボード（企画書 6.2 方式 B）
             go.AddComponent<EyeCoverInput>();
+            EyeCoverSetup.Apply(go);
 
             go.AddComponent<HudController>();
         }

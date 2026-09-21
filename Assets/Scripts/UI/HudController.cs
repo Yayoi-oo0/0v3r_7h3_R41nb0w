@@ -123,7 +123,7 @@ namespace OverTheRainbow.UI
             helpText = CreateText(canvasGo.transform, font, "Help", 28, TextAnchor.LowerCenter,
                 new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 36f), new Vector2(1400f, 80f));
             helpText.color = new Color(1f, 1f, 1f, 0.45f);
-            helpText.text = "WASD 移動　マウス 視点　SPACE 遮眼子（仮）　R リトライ　ESC ポーズ";
+            helpText.text = "WASD 移動　マウス 視点　遮眼子を目に当てる（SPACE で代用）　F1 トラッカー状態　R リトライ　ESC ポーズ";
         }
 
         private static Text CreateText(Transform parent, Font font, string name, int size, TextAnchor anchor,

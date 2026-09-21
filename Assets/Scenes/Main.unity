@@ -225,6 +225,8 @@ GameObject:
   - component: {fileID: 566930930}
   - component: {fileID: 566930929}
   - component: {fileID: 566930934}
+  - component: {fileID: 566930936}
+  - component: {fileID: 566930937}
   m_Layer: 0
   m_Name: GameSystems
   m_TagString: Untagged
@@ -260,7 +262,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0469edb7e64c5b340b138f373ec1f98d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sourceBehaviour: {fileID: 0}
+  sourceBehaviour: {fileID: 566930937}
+  fallbackSourceBehaviour: {fileID: 566930931}
   framesToCover: 5
   framesToUncover: 3
 --- !u!114 &566930931
@@ -322,6 +325,51 @@ MonoBehaviour:
   eyeCover: {fileID: 566930930}
   corruptionPerSecond: 0.3
   recoveryPerSecond: 0.5
+--- !u!114 &566930936
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 566930928}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac7e24d23df75431d82be9cdba7b66e0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  eyeCover: {fileID: 0}
+  toggleKey: 282
+  calibrateKey: 99
+  showDetailsOnStart: 0
+--- !u!114 &566930937
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 566930928}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3f44dc2c0ca964c318d8013aa143e86c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  deviceName: 
+  requestedWidth: 640
+  requestedHeight: 360
+  requestedFps: 30
+  modelResourceName: face_landmarker_v2
+  hueCenter: 0.92
+  hueTolerance: 0.06
+  minSaturation: 0.45
+  minValue: 0.35
+  minAreaRatio: 0.0006
+  maxAreaRatio: 0.2
+  minFillRatio: 0.45
+  maxAspect: 2.5
+  eyeRadius: 0.6
+  analysisHeight: 120
+  detectFaceOnlyWithMarker: 1
+  holdFramesOnFaceLost: 10
 --- !u!1 &1037795444
 GameObject:
   m_ObjectHideFlags: 0
