@@ -12,7 +12,8 @@ namespace OverTheRainbow.UI
     public class EyeCoverStatusOverlay : MonoBehaviour
     {
         [SerializeField] private EyeCoverInput eyeCover;
-        [SerializeField] private KeyCode toggleKey = KeyCode.F1;
+        [Tooltip("macOS では F1〜F12 が輝度・音量に取られるので、既定は Tab")]
+        [SerializeField] private KeyCode toggleKey = KeyCode.Tab;
         [Tooltip("詳細パネルを開いている間、このキーでマーカー色を拾い直す")]
         [SerializeField] private KeyCode calibrateKey = KeyCode.C;
         [Tooltip("詳細パネルを最初から開いておく（設営中に便利）")]
@@ -68,7 +69,7 @@ namespace OverTheRainbow.UI
             var rect = new Rect(Screen.width * 0.5f - 320f, 12f, 640f, 30f);
             var prev = GUI.color;
             GUI.color = new Color(1f, 0.55f, 0.2f, 0.9f);
-            GUI.Label(rect, "遮眼子トラッカー未接続 — SPACE キーで代用中（F1 で詳細）", labelStyle);
+            GUI.Label(rect, "遮眼子トラッカー未接続 — SPACE キーで代用中（" + toggleKey + " で詳細）", labelStyle);
             GUI.color = prev;
         }
 
@@ -78,7 +79,7 @@ namespace OverTheRainbow.UI
             GUI.Box(rect, GUIContent.none, boxStyle);
             GUILayout.BeginArea(new Rect(rect.x + 14f, rect.y + 12f, rect.width - 28f, rect.height - 24f));
 
-            GUILayout.Label("遮眼子トラッカー（F1 で閉じる）", labelStyle);
+            GUILayout.Label("遮眼子トラッカー（" + toggleKey + " で閉じる）", labelStyle);
             GUILayout.Space(6f);
             GUILayout.Label("入力元　" + eyeCover.SourceName, labelStyle);
 

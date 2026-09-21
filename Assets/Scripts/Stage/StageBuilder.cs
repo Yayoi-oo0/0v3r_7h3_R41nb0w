@@ -40,10 +40,20 @@ namespace OverTheRainbow.Stage
         [Tooltip("0 なら毎回ランダム。固定値にすると同じコースを再現できる")]
         [SerializeField] private int seed = 0;
 
-        [Header("壁")]
-        [Tooltip("コース脇に落下防止の壁を置く")]
+        [Header("壁・柵")]
+        [Tooltip("コース脇に落下防止の当たり判定を置く")]
         [SerializeField] private bool buildSideWalls = true;
         [SerializeField] private float wallHeight = 3f;
+        [Tooltip("柵のモデル（fence_single）。設定すると、白ボックスの壁の代わりにこれを並べる")]
+        [SerializeField] private GameObject sideFencePrefab;
+        [Tooltip("柵に貼るマテリアル。未設定ならモデル付属のものを使う（Built-in 用だと URP ではピンクになる）")]
+        [SerializeField] private Material fenceMaterial;
+        [Tooltip("柵の大きさ倍率")]
+        [SerializeField, Min(0.01f)] private float fenceScale = 1f;
+        [Tooltip("コース中心からの距離 m。既定の壁と同じ位置")]
+        [SerializeField] private float fenceOffsetFromCenter = 3.25f;
+        [Tooltip("柵どうしの重なり m。少し重ねると繋ぎ目が目立たない")]
+        [SerializeField] private float fenceOverlap = 0.02f;
 
         [Header("見た目（Phase 1 は白ボックス）")]
         [Tooltip("URP/Lit のマテリアル。これを複製して色を変える（ビルドでシェーダが削除されないようアセットで持つ）")]
@@ -68,6 +78,30 @@ namespace OverTheRainbow.Stage
         [Tooltip("真っ黒だと逆に穴が目立つ。アスファルトより一段暗いくらいにすると、ぼやけた視界で溶け込む")]
         [SerializeField] private Color abyssColor = new Color(0.15f, 0.15f, 0.14f);
 
+        [Header("平原（道の脇）")]
+        [Tooltip("道の両脇に芝生を敷く。見た目だけで当たり判定は持たせない（乗れると穴を迂回できてしまう）")]
+        [SerializeField] private bool buildGrass = true;
+        [SerializeField] private Color grassColor = new Color(0.45f, 0.58f, 0.28f);
+        [Tooltip("繰り返して貼る芝のテクスチャ。未設定なら単色")]
+        [SerializeField] private Texture grassTexture;
+        [Tooltip("テクスチャ 1 枚が覆う距離 m")]
+        [SerializeField, Min(0.5f)] private float grassTextureLength = 8f;
+        [Tooltip("片側の奥行き m。地平線まで届く幅にする")]
+        [SerializeField, Min(1f)] private float grassSideWidth = 500f;
+        [Tooltip("進行方向の長さ m。カメラの Far Clip より長くしておく")]
+        [SerializeField, Min(1f)] private float grassLength = 1200f;
+        [Tooltip("路面よりどれだけ低くするか m。少し下げると道が一段高く見え、縁もはっきりする")]
+        [SerializeField, Min(0f)] private float grassDropBelowRoad = 0.15f;
+        [Tooltip("脇の壁を見せる。平原を敷くなら切る（当たり判定は残るので落ちない）")]
+        [SerializeField] private bool showSideWalls = true;
+
+        [Header("遠景の道（見た目だけ）")]
+        [Tooltip("生成済みの道が途切れた先に、穴のない道を描き足して地平線まで繋げる")]
+        [SerializeField] private bool buildFarRoad = true;
+        [SerializeField, Min(1f)] private float farRoadLength = 1000f;
+        [Tooltip("本物の道と重なる部分で z ファイティングしないよう、わずかに沈める m")]
+        [SerializeField, Min(0f)] private float farRoadSink = 0.03f;
+
         /// <summary>プレイヤーの初期位置（先頭セルの中央レーン、床上）。</summary>
         public Vector3 PlayerSpawn => CellCenter(0, laneCount / 2) + Vector3.up * 1.0f;
 
@@ -86,6 +120,14 @@ namespace OverTheRainbow.Stage
         private Material[,] roadMats; // [レーン, 進行方向の位置] ごとに切り出す位置が違う
         private int roadTilesAlong;
         private Transform abyss;
+        private float fenceStep;        // 柵 1 枚が進行方向に占める長さ
+        private float fenceBottomLift;  // 足元を路面に合わせるための持ち上げ
+        private bool fenceAlongX;       // モデルが X 方向に伸びているか（Z 向きに回す必要があるか）
+        private bool fenceMeasured;
+        private Transform[] grassSides;
+        private Material grassMat;
+        private Transform farRoad;
+        private Material farRoadMat;
         private int nextChunkIndex;
         private int solutionLane; // 直前のセルで「必ず通れる」レーン
 
@@ -109,6 +151,8 @@ namespace OverTheRainbow.Stage
             root.SetParent(transform, false);
 
             if (buildAbyss) CreateAbyss();
+            if (buildGrass) CreateGrass();
+            if (buildFarRoad) CreateFarRoad();
 
             nextChunkIndex = -Mathf.CeilToInt(initialBehindDistance / ChunkLength);
             solutionLane = laneCount / 2;
@@ -120,6 +164,8 @@ namespace OverTheRainbow.Stage
             GenerateAhead();
             DestroyBehind();
             FollowAbyss();
+            FollowGrass();
+            FollowFarRoad();
         }
 
         /// <summary>
@@ -156,6 +202,201 @@ namespace OverTheRainbow.Stage
             Vector3 p = abyss.localPosition;
             p.z = player.position.z;
             abyss.localPosition = p;
+        }
+
+        /// <summary>チャンク 1 つぶんの柵を並べる。</summary>
+        private void BuildFenceRow(Transform parent, int side, int chunkIndex)
+        {
+            MeasureFence();
+            if (fenceStep <= 0f) return;
+
+            float startZ = ChunkStartZ(chunkIndex);
+            // チャンクの長さにぴったり収まる枚数で割り、端が半端に飛び出さないようにする
+            int count = Mathf.Max(1, Mathf.RoundToInt(ChunkLength / fenceStep));
+            float step = ChunkLength / count;
+
+            // モデルが X 方向に伸びているなら Z 向きへ回す。裏表があるので、右側は反転させる
+            float yaw = (fenceAlongX ? 90f : 0f) + (side < 0 ? 0f : 180f);
+
+            for (int i = 0; i < count; i++)
+            {
+                var go = Instantiate(sideFencePrefab, parent);
+                go.name = "Fence_" + (side < 0 ? "L" : "R") + i;
+                go.transform.localPosition = new Vector3(
+                    side * fenceOffsetFromCenter,
+                    fenceBottomLift,
+                    startZ + step * (i + 0.5f));
+                go.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+                go.transform.localScale = Vector3.one * fenceScale;
+
+                if (fenceMaterial != null) ApplyMaterial(go, fenceMaterial);
+            }
+        }
+
+        /// <summary>モデルに含まれる全スロットを同じマテリアルで塗り替える。</summary>
+        private static void ApplyMaterial(GameObject go, Material material)
+        {
+            foreach (var renderer in go.GetComponentsInChildren<MeshRenderer>())
+            {
+                var materials = new Material[renderer.sharedMaterials.Length];
+                for (int i = 0; i < materials.Length; i++) materials[i] = material;
+                renderer.sharedMaterials = materials;
+            }
+        }
+
+        /// <summary>
+        /// 柵モデルの寸法を 1 度だけ測る。
+        /// 長辺の向き・並べる間隔・足元の高さを、モデル任せで決められるようにするため
+        /// （アセットごとに原点や向きが違うので、数値で決め打ちしない）。
+        /// </summary>
+        private void MeasureFence()
+        {
+            if (fenceMeasured) return;
+            fenceMeasured = true;
+
+            var filters = sideFencePrefab.GetComponentsInChildren<MeshFilter>();
+            if (filters.Length == 0)
+            {
+                Debug.LogWarning("[StageBuilder] 柵モデルにメッシュがありません。", this);
+                return;
+            }
+
+            Bounds bounds = default;
+            bool first = true;
+            Matrix4x4 rootInverse = sideFencePrefab.transform.worldToLocalMatrix;
+            foreach (var filter in filters)
+            {
+                if (filter.sharedMesh == null) continue;
+
+                Bounds local = filter.sharedMesh.bounds;
+                Matrix4x4 toRoot = rootInverse * filter.transform.localToWorldMatrix;
+                var transformed = new Bounds(toRoot.MultiplyPoint3x4(local.center), Vector3.zero);
+                // 8 頂点を回してから包み直さないと、回転の入ったモデルで寸法がずれる
+                for (int corner = 0; corner < 8; corner++)
+                {
+                    Vector3 point = local.center + Vector3.Scale(local.extents, new Vector3(
+                        (corner & 1) == 0 ? -1f : 1f,
+                        (corner & 2) == 0 ? -1f : 1f,
+                        (corner & 4) == 0 ? -1f : 1f));
+                    transformed.Encapsulate(toRoot.MultiplyPoint3x4(point));
+                }
+
+                if (first) { bounds = transformed; first = false; }
+                else bounds.Encapsulate(transformed);
+            }
+
+            Vector3 size = bounds.size * fenceScale;
+            fenceAlongX = size.x >= size.z;
+            fenceStep = Mathf.Max(0.1f, (fenceAlongX ? size.x : size.z) - fenceOverlap);
+            // 原点が足元とは限らないので、下端が路面（y = 0）に来るよう持ち上げる
+            fenceBottomLift = -bounds.min.y * fenceScale;
+        }
+
+        /// <summary>
+        /// 道の両脇に芝生を敷く。奈落と同じくプレイヤーについて動く一枚板で、当たり判定は持たせない。
+        /// 乗れてしまうと穴を全部迂回できてしまうため、脇の壁（当たり判定）はそのまま残す。
+        /// </summary>
+        private void CreateGrass()
+        {
+            float halfWidth = laneCount * cellSize * 0.5f;
+            float inner = halfWidth + 0.5f; // 壁の外側から始める
+            const float thickness = 1f;
+
+            grassMat = CreateMaterial("Grass", grassColor);
+            if (grassTexture != null)
+            {
+                grassMat.mainTexture = grassTexture;
+                grassMat.mainTextureScale =
+                    new Vector2(grassSideWidth / grassTextureLength, grassLength / grassTextureLength);
+            }
+            grassMat.SetFloat("_Smoothness", 0f); // 草がてかると一気に嘘っぽくなる
+
+            grassSides = new Transform[2];
+            int index = 0;
+            for (int side = -1; side <= 1; side += 2)
+            {
+                var go = CreateBox(transform, side < 0 ? "Grass_Left" : "Grass_Right",
+                    new Vector3(side * (inner + grassSideWidth * 0.5f), -grassDropBelowRoad - thickness * 0.5f, 0f),
+                    new Vector3(grassSideWidth, thickness, grassLength),
+                    grassMat);
+                Destroy(go.GetComponent<Collider>());
+
+                var renderer = go.GetComponent<MeshRenderer>();
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
+
+                grassSides[index++] = go.transform;
+            }
+
+            FollowGrass();
+        }
+
+        /// <summary>
+        /// 生成済みの道が途切れる先に、穴のない道を描き足す。見た目だけで当たり判定はない。
+        /// 前方 50m までしか実物を作らないので、これが無いと道が野原の真ん中で切れて見える。
+        /// </summary>
+        private void CreateFarRoad()
+        {
+            const float thickness = 1f;
+
+            farRoadMat = CreateMaterial("FarRoad", Color.white);
+            if (roadTexture != null)
+            {
+                farRoadMat.mainTexture = roadTexture;
+                farRoadMat.mainTextureScale = new Vector2(1f, farRoadLength / roadTextureLength);
+            }
+
+            var go = CreateBox(transform, "FarRoad",
+                new Vector3(0f, -farRoadSink - thickness * 0.5f, 0f),
+                new Vector3(laneCount * cellSize, thickness, farRoadLength),
+                farRoadMat);
+            Destroy(go.GetComponent<Collider>());
+
+            var renderer = go.GetComponent<MeshRenderer>();
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+
+            farRoad = go.transform;
+            FollowFarRoad();
+        }
+
+        /// <summary>
+        /// 板はプレイヤーについて動くが、テクスチャは動かさない。
+        /// そのまま動かすと模様が張り付いて、進んでいる感じが消える。
+        /// </summary>
+        private void FollowGrass()
+        {
+            if (grassSides == null || player == null) return;
+
+            float z = player.position.z;
+            foreach (var side in grassSides)
+            {
+                if (side == null) continue;
+                Vector3 p = side.localPosition;
+                p.z = z;
+                side.localPosition = p;
+            }
+
+            if (grassMat != null && grassTexture != null)
+            {
+                grassMat.mainTextureOffset = new Vector2(0f, z / grassTextureLength);
+            }
+        }
+
+        private void FollowFarRoad()
+        {
+            if (farRoad == null || player == null) return;
+
+            // 実物の道が終わるあたりから先に描く。手前は本物が上に乗る（farRoadSink ぶん沈めてある）
+            float start = player.position.z + generateAheadDistance;
+            Vector3 p = farRoad.localPosition;
+            p.z = start + farRoadLength * 0.5f;
+            farRoad.localPosition = p;
+
+            if (farRoadMat != null && roadTexture != null)
+            {
+                farRoadMat.mainTextureOffset = new Vector2(0f, start / roadTextureLength);
+            }
         }
 
         private float ChunkLength => cellsPerChunk * cellSize;
@@ -219,12 +460,19 @@ namespace OverTheRainbow.Stage
                 float centerZ = ChunkStartZ(chunkIndex) + ChunkLength * 0.5f;
                 for (int side = -1; side <= 1; side += 2)
                 {
-                    CreateBox(
+                    var wall = CreateBox(
                         chunkRoot.transform,
                         side < 0 ? "Wall_Left" : "Wall_Right",
                         new Vector3(side * (halfWidth + 0.25f), wallHeight * 0.5f - cellSize * 0.5f, centerZ),
                         new Vector3(0.5f, wallHeight, ChunkLength),
                         wallMat);
+
+                    // 柵を立てるなら、箱は当たり判定だけの見えない壁にする。
+                    // 柵のモデルに当たり判定を持たせるより、一枚板の方が引っ掛からない
+                    bool hideWall = !showSideWalls || sideFencePrefab != null;
+                    if (hideWall) wall.GetComponent<MeshRenderer>().enabled = false;
+
+                    if (sideFencePrefab != null) BuildFenceRow(chunkRoot.transform, side, chunkIndex);
                 }
             }
 

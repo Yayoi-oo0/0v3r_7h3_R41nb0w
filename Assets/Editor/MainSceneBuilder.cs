@@ -28,6 +28,8 @@ namespace OverTheRainbow.EditorTools
             CreateStage();
             CreateSystems();
             CreatePlayer();
+            BalloonSetup.ApplyToOpenScene(); // プレイヤーができてから
+            GrassSetup.ApplyToOpenScene();   // カメラの描画距離も伸ばすので、カメラができてから
             VisionBlurSetup.ApplyToOpenScene(); // カメラと EyeCoverInput ができてから
             CorruptionVignetteSetup.ApplyToOpenScene();
             VhsPostEffectSetup.ApplyToOpenScene();
@@ -73,6 +75,7 @@ namespace OverTheRainbow.EditorTools
             if (baseMat != null) UrpSetup.AssignBaseMaterial(builder, baseMat);
 
             RoadLookSetup.Apply(builder);
+            FenceSetup.Apply(builder);
         }
 
         private static void CreateSystems()

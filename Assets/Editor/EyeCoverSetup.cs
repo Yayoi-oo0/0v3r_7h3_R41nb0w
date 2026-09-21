@@ -67,7 +67,17 @@ namespace OverTheRainbow.EditorTools
                 so.ApplyModifiedPropertiesWithoutUndo();
             }
 
-            if (host.GetComponent<EyeCoverStatusOverlay>() == null) host.AddComponent<EyeCoverStatusOverlay>();
+            var overlay = host.GetComponent<EyeCoverStatusOverlay>();
+            if (overlay == null) overlay = host.AddComponent<EyeCoverStatusOverlay>();
+
+            // F1 は macOS で輝度キーに取られる。古い既定値のままなら Tab に直す
+            var overlaySo = new SerializedObject(overlay);
+            var toggleKey = overlaySo.FindProperty("toggleKey");
+            if (toggleKey.intValue == (int)KeyCode.F1)
+            {
+                toggleKey.intValue = (int)KeyCode.Tab;
+                overlaySo.ApplyModifiedPropertiesWithoutUndo();
+            }
         }
 
         private static void RemoveIfPresent<T>(GameObject host) where T : Component

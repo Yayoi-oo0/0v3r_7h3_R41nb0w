@@ -17,8 +17,11 @@ namespace OverTheRainbow.Vision
         [Header("入力元")]
         [Tooltip("未設定なら同じ GameObject から IEyeCoverSource を探す")]
         [SerializeField] private MonoBehaviour sourceBehaviour;
-        [Tooltip("主入力が使用不能なとき（カメラ未接続、Python 未起動）に使う予備。通常はキーボード")]
+        [Tooltip("主入力が使用不能なとき（カメラ未接続など）に使う予備。通常はキーボード")]
         [SerializeField] private MonoBehaviour fallbackSourceBehaviour;
+        [Tooltip("主入力が生きていても、予備が「当てている」と言えばそちらを優先する。"
+               + "デバッグと、本番でトラッカーが怪しいときの救済用")]
+        [SerializeField] private bool fallbackCanOverride = true;
 
         [Header("平滑化（企画書 7. 状態遷移の連続フレーム数）")]
         [Tooltip("Open → Covered に必要な連続フレーム数")]
@@ -42,6 +45,9 @@ namespace OverTheRainbow.Vision
 
         /// <summary>予備に落ちているか。体験会でトラッカーが落ちたことに気付くための表示用。</summary>
         public bool IsUsingFallback => !IsSourceAvailable && fallbackSource != null && fallbackSource.IsAvailable;
+
+        /// <summary>今フレーム、予備入力による上書きが効いているか。</summary>
+        public bool IsFallbackOverriding { get; private set; }
 
         /// <summary>今フレーム実際に読んでいる入力元。主入力が使えなければ予備。</summary>
         public IEyeCoverSource ActiveSource => IsSourceAvailable ? source : fallbackSource;
@@ -83,6 +89,16 @@ namespace OverTheRainbow.Vision
             if (active == null) return;
 
             EyeState raw = active.IsAvailable ? active.ReadRaw() : EyeState.Lost;
+
+            // 予備（キーボード）は主入力が生きていても割り込める。
+            // カメラが動いている間 SPACE が死んでいると、検証も救済もできないため。
+            IsFallbackOverriding = false;
+            if (fallbackCanOverride && fallbackSource != null && fallbackSource != active
+                && fallbackSource.IsAvailable && fallbackSource.ReadRaw() == EyeState.Covered)
+            {
+                raw = EyeState.Covered;
+                IsFallbackOverriding = true;
+            }
             // Lost は安全側（遮眼子なし）に倒す。誤って視界クリアのまま固まるのを防ぐ。
             bool rawCovered = raw == EyeState.Covered;
 
