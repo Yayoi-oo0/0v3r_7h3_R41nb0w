@@ -222,9 +222,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   player: {fileID: 0}
   startDistanceBehind: 10
-  startSpeed: 1.5
-  speedGainPer100m: 0.3
-  maxSpeed: 3.5
+  startSpeed: 1.7
+  speedGainPer100m: 0.5
+  maxSpeed: 6
   color: {r: 0, g: 0, b: 0, a: 1}
   visualSize: {x: 400, y: 400, z: 80}
 --- !u!1 &566930928
@@ -340,8 +340,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   eyeCover: {fileID: 566930930}
-  corruptionPerSecond: 0.3
-  recoveryPerSecond: 0.5
+  corruptionPerSecond: 1.2
+  recoveryPerSecond: 0.1
 --- !u!114 &566930936
 MonoBehaviour:
   m_ObjectHideFlags: 0

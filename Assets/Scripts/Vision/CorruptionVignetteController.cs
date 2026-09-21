@@ -26,6 +26,9 @@ namespace OverTheRainbow.Vision
         [SerializeField, Range(0.01f, 1f)] private float smoothnessAtMax = 1f;
         [Tooltip("侵食がこの値を超えたら、画面全体にも色を掛け始める。1 で全体が染まりきる")]
         [SerializeField, Range(0f, 1f)] private float fullScreenStart = 0.7f;
+        [Tooltip("遮眼子を受け付けない間、最低限これだけの濃さを保つ。"
+               + "薄すぎて見えないのに使えない、という状態を作らないため")]
+        [SerializeField, Range(0f, 0.5f)] private float intensityWhileLocked = 0.3f;
 
         private Vignette vignette;
         private ColorAdjustments colorAdjustments;
@@ -54,7 +57,15 @@ namespace OverTheRainbow.Vision
         private void Update()
         {
             float t = corruption != null ? corruption.Corruption : 0f;
-            vignette.intensity.value = Mathf.Lerp(intensityAtMin, intensityAtMax, t);
+
+            float intensity = Mathf.Lerp(intensityAtMin, intensityAtMax, t);
+            // 侵食が薄く残っている間も「まだ使えない」ことが見えるように、下限を切る。
+            // これで「赤が消えた ＝ また当てられる」が嘘にならない
+            if (corruption != null && corruption.BlocksCover)
+            {
+                intensity = Mathf.Max(intensity, intensityWhileLocked);
+            }
+            vignette.intensity.value = intensity;
             vignette.smoothness.value = Mathf.Lerp(smoothnessAtMin, smoothnessAtMax, t);
 
             // Color Filter は画面の色に掛け算される。白 = 変化なし、color = 全体がビネットの端と同じ色

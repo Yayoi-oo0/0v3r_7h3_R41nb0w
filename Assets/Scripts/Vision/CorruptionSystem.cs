@@ -7,7 +7,11 @@ namespace OverTheRainbow.Vision
     /// 視界の侵食ゲージ（企画書 4.1 リスク：視界の侵食 / 7. パラメータ表）。
     /// 遮眼子を当てている間は溜まり、外すと侵食より遅い速度で回復する。
     /// 限界（1）に達したらゲームオーバー。
-    /// 一度外したら、侵食が 0 に回復しきるまで次の遮眼子を受け付けない。
+    ///
+    /// 一度外したら、侵食が閾値まで引くまで次の遮眼子を受け付けない（連続使用の禁止）。
+    /// この「受け付けない状態」は赤いビネットで見せる約束にしてある。
+    /// CorruptionVignetteController が BlocksCover の間は必ず見える濃さを保つので、
+    /// 「赤が消えたら、また使える」がそのまま成り立つ。
     /// </summary>
     public class CorruptionSystem : MonoBehaviour
     {
@@ -18,9 +22,17 @@ namespace OverTheRainbow.Vision
         [SerializeField, Min(0f)] private float corruptionPerSecond = 0.3f;
         [Tooltip("外している間に 1 秒で回復する量（0〜1）。侵食の半分以下に")]
         [SerializeField, Min(0f)] private float recoveryPerSecond = 0.5f;
+        [Tooltip("侵食がここまで引いたら、次の遮眼子を受け付ける。0 なら完全回復まで待たせる")]
+        [SerializeField, Range(0f, 1f)] private float unlockAtCorruption = 0f;
 
         /// <summary>侵食の進み具合。0 = なし、1 = 限界。</summary>
         public float Corruption { get; private set; }
+
+        /// <summary>
+        /// 今この瞬間、次の遮眼子を受け付けないか。
+        /// ビネットと HUD はこれを見て「まだ使えない」ことを描く。
+        /// </summary>
+        public bool BlocksCover => Corruption > unlockAtCorruption;
 
         private void Awake()
         {
@@ -40,7 +52,7 @@ namespace OverTheRainbow.Vision
 
         private void OnCoverEnded()
         {
-            if (Corruption > 0f) eyeCover.IsCoverLocked = true;
+            if (BlocksCover) eyeCover.IsCoverLocked = true;
         }
 
         private void Update()
@@ -53,7 +65,7 @@ namespace OverTheRainbow.Vision
             float delta = covered ? corruptionPerSecond : -recoveryPerSecond;
             Corruption = Mathf.Clamp01(Corruption + delta * Time.deltaTime);
 
-            if (Corruption <= 0f && eyeCover != null) eyeCover.IsCoverLocked = false;
+            if (!BlocksCover && eyeCover != null) eyeCover.IsCoverLocked = false;
 
             if (Corruption >= 1f && gm != null)
             {
