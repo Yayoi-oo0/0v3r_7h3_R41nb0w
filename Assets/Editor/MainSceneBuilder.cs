@@ -88,6 +88,8 @@ namespace OverTheRainbow.EditorTools
             EyeCoverSetup.Apply(go);
 
             go.AddComponent<HudController>();
+
+            BgmSetup.Apply(go);
         }
 
         private static void CreatePlayer()

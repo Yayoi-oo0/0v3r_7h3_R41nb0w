@@ -1,4 +1,5 @@
 using UnityEngine;
+using OverTheRainbow.Core;
 
 namespace OverTheRainbow.Vision
 {
@@ -16,6 +17,8 @@ namespace OverTheRainbow.Vision
         [SerializeField, Range(0f, 1f)] private float blurAmount = 1f;
         [Tooltip("ぼやけ ↔ クリアの切り替えにかける秒数（企画書 6.5：0.2〜0.3 秒）")]
         [SerializeField, Min(0f)] private float transitionSeconds = 0.25f;
+        [Tooltip("カウントダウン中はぼかさない。スタート前にコースを見せ、開始と同時にぼやける")]
+        [SerializeField] private bool clearDuringCountdown = true;
 
         private float blur = 1f; // 0 = クリア, 1 = 最大ぼけ
 
@@ -29,7 +32,13 @@ namespace OverTheRainbow.Vision
         private void Update()
         {
             bool covered = eyeCover != null && eyeCover.IsEyeCovered;
-            float target = covered ? 0f : 1f;
+
+            // カウントダウン中は遮眼子と同じ「クリア」扱い。
+            // 開始の瞬間に target が 1 へ変わるので、そのまま 0.25 秒かけてぼやけていく
+            GameManager gm = GameManager.Instance;
+            bool countdown = clearDuringCountdown && gm != null && gm.State == GameState.Countdown;
+
+            float target = covered || countdown ? 0f : 1f;
 
             blur = transitionSeconds > 0f
                 ? Mathf.MoveTowards(blur, target, Time.deltaTime / transitionSeconds)

@@ -13,16 +13,11 @@ namespace OverTheRainbow.UI
     /// </summary>
     public class HudController : MonoBehaviour
     {
-        [SerializeField] private EyeCoverInput eyeCover;
         [SerializeField] private DistanceTracker distanceTracker;
         [SerializeField] private DarknessChaser darkness;
-        [Tooltip("操作説明を画面下部に出す（体験会では切る）")]
-        [SerializeField] private bool showDebugHelp = true;
 
         private Text distanceText;
-        private Text visionText;
         private Text centerText;
-        private Text helpText;
 
         private void Awake()
         {
@@ -35,7 +30,6 @@ namespace OverTheRainbow.UI
         /// </summary>
         private void Start()
         {
-            if (eyeCover == null) eyeCover = FindObjectOfType<EyeCoverInput>();
             if (distanceTracker == null) distanceTracker = FindObjectOfType<DistanceTracker>();
             if (darkness == null) darkness = FindObjectOfType<DarknessChaser>();
         }
@@ -51,12 +45,7 @@ namespace OverTheRainbow.UI
                 distanceText.text += "\n闇まで  " + Mathf.Max(0, Mathf.FloorToInt(darkness.DistanceToPlayer)) + " m";
             }
 
-            bool covered = eyeCover != null && eyeCover.IsEyeCovered;
-            visionText.text = covered ? "視界：クリア（移動ロック）" : "視界：ぼやけ";
-            visionText.color = covered ? new Color(1f, 0.95f, 0.6f) : new Color(1f, 1f, 1f, 0.6f);
-
             centerText.text = BuildCenterText(gm);
-            helpText.enabled = showDebugHelp;
         }
 
         private string BuildCenterText(GameManager gm)
@@ -114,16 +103,8 @@ namespace OverTheRainbow.UI
             distanceText = CreateText(canvasGo.transform, font, "Distance", 44, TextAnchor.UpperLeft,
                 new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(40f, -40f), new Vector2(600f, 120f));
 
-            visionText = CreateText(canvasGo.transform, font, "Vision", 36, TextAnchor.UpperRight,
-                new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-40f, -40f), new Vector2(700f, 140f));
-
             centerText = CreateText(canvasGo.transform, font, "Center", 72, TextAnchor.MiddleCenter,
                 new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1200f, 600f));
-
-            helpText = CreateText(canvasGo.transform, font, "Help", 28, TextAnchor.LowerCenter,
-                new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 36f), new Vector2(1400f, 80f));
-            helpText.color = new Color(1f, 1f, 1f, 0.45f);
-            helpText.text = "WASD 移動　マウス 視点　遮眼子を目に当てる（SPACE で代用）　Tab トラッカー状態　R リトライ　ESC ポーズ";
         }
 
         private static Text CreateText(Transform parent, Font font, string name, int size, TextAnchor anchor,
