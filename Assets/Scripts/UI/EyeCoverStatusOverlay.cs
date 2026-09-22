@@ -48,8 +48,8 @@ namespace OverTheRainbow.UI
             if (showDetails && Input.GetKeyDown(calibrateKey) && diagnostics != null)
             {
                 calibrateMessage = diagnostics.TryCalibrateColor()
-                    ? "マーカー色を拾いました"
-                    : "色を拾えませんでした（マーカーをカメラに近づけてください）";
+                    ? "Marker color captured"
+                    : "Could not capture color - hold the marker closer";
                 calibrateMessageUntil = Time.realtimeSinceStartup + 3f;
             }
         }
@@ -69,7 +69,7 @@ namespace OverTheRainbow.UI
             var rect = new Rect(Screen.width * 0.5f - 320f, 12f, 640f, 30f);
             var prev = GUI.color;
             GUI.color = new Color(1f, 0.55f, 0.2f, 0.9f);
-            GUI.Label(rect, "遮眼子トラッカー未接続 — SPACE キーで代用中（" + toggleKey + " で詳細）", labelStyle);
+            GUI.Label(rect, "TRACKER OFFLINE - using SPACE key (" + toggleKey + " for details)", labelStyle);
             GUI.color = prev;
         }
 
@@ -79,39 +79,39 @@ namespace OverTheRainbow.UI
             GUI.Box(rect, GUIContent.none, boxStyle);
             GUILayout.BeginArea(new Rect(rect.x + 14f, rect.y + 12f, rect.width - 28f, rect.height - 24f));
 
-            GUILayout.Label("遮眼子トラッカー（" + toggleKey + " で閉じる）", labelStyle);
+            GUILayout.Label("EYE COVER TRACKER (" + toggleKey + " to close)", labelStyle);
             GUILayout.Space(6f);
-            GUILayout.Label("入力元　" + eyeCover.SourceName, labelStyle);
+            GUILayout.Label("Source    " + eyeCover.SourceName, labelStyle);
 
             if (diagnostics == null)
             {
-                GUILayout.Label("検出コンポーネントがシーンにありません", labelStyle);
-                GUILayout.Label("メニュー「0v3r 7h3 R41nb0w / 遮眼子トラッカーをセットアップ」", labelStyle);
+                GUILayout.Label("No detector in the scene", labelStyle);
+                GUILayout.Label("Run menu: 0v3r 7h3 R41nb0w / Set up eye cover tracker", labelStyle);
             }
             else
             {
                 bool live = eyeCover.IsSourceAvailable;
-                GUILayout.Label("状態　　" + diagnostics.StatusLine,
+                GUILayout.Label("Status    " + diagnostics.StatusLine,
                     Colored(live ? new Color(0.6f, 1f, 0.6f) : new Color(1f, 0.5f, 0.4f)));
-                GUILayout.Label("顔　　　" + (diagnostics.FaceFound ? "検出" : "未検出 — カメラに顔を入れてください"),
+                GUILayout.Label("Face      " + (diagnostics.FaceFound ? "found" : "not found - show your face to the camera"),
                     Colored(diagnostics.FaceFound ? Color.white : new Color(1f, 0.6f, 0.3f)));
-                GUILayout.Label("マーカー面積　" + diagnostics.MarkerRatio.ToString("F4"), labelStyle);
-                GUILayout.Label("目までの距離　"
+                GUILayout.Label("Marker    " + diagnostics.MarkerRatio.ToString("F4"), labelStyle);
+                GUILayout.Label("Eye dist  "
                     + (diagnostics.EyeDistance < 0f ? "—" : diagnostics.EyeDistance.ToString("F2")), labelStyle);
             }
 
             GUILayout.Space(6f);
             bool covered = eyeCover.IsEyeCovered;
             string eye = diagnostics != null && !string.IsNullOrEmpty(diagnostics.CoveredEye)
-                ? "（" + (diagnostics.CoveredEye == "L" ? "左目" : "右目") + "）"
+                ? " (" + (diagnostics.CoveredEye == "L" ? "left eye" : "right eye") + ")"
                 : string.Empty;
-            GUILayout.Label("判定　　" + (covered ? "遮眼子を当てている" + eye : "当てていない"),
+            GUILayout.Label("State     " + (covered ? "covered" + eye : "not covered"),
                 Colored(covered ? new Color(1f, 0.95f, 0.6f) : Color.white));
 
             GUILayout.Space(4f);
             if (diagnostics != null && diagnostics.PreviewTexture != null)
             {
-                GUILayout.Label("C　この色を拾う（遮眼子をカメラに向けて）", labelStyle);
+                GUILayout.Label("C   capture this color (point the marker at the camera)", labelStyle);
             }
             if (Time.realtimeSinceStartup < calibrateMessageUntil)
             {

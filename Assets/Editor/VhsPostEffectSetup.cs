@@ -39,6 +39,7 @@ namespace OverTheRainbow.EditorTools
             int overlayLayer = EnsureOverlayLayer();
             EnsureRendererFeatures(overlayLayer);
             EnsureDateDisplay();
+            ApplyFontToHud();
         }
 
         /// <summary>
@@ -135,6 +136,21 @@ namespace OverTheRainbow.EditorTools
 
             Debug.LogError("[VhsPostEffectSetup] レイヤーの空きがありません。日時表示にも視界ブラーが掛かります。");
             return -1;
+        }
+
+        /// <summary>HUD の文字も同じ VCR OSD Mono に揃える。</summary>
+        private static void ApplyFontToHud()
+        {
+            var font = AssetDatabase.LoadAssetAtPath<Font>(FontPath);
+            if (font == null) return;
+
+            foreach (var hud in Object.FindObjectsOfType<HudController>())
+            {
+                var so = new SerializedObject(hud);
+                so.FindProperty("font").objectReferenceValue = font;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(hud);
+            }
         }
 
         /// <summary>日時表示を置き、VCR OSD Mono を割り当てる。</summary>

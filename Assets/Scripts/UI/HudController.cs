@@ -13,6 +13,8 @@ namespace OverTheRainbow.UI
     /// </summary>
     public class HudController : MonoBehaviour
     {
+        [Tooltip("VCR OSD Mono。Assets/Fonts のものをセットアップ時に割り当てる。未設定なら内蔵フォント")]
+        [SerializeField] private Font font;
         [SerializeField] private DistanceTracker distanceTracker;
         [SerializeField] private DarknessChaser darkness;
 
@@ -42,7 +44,7 @@ namespace OverTheRainbow.UI
             distanceText.text = FormatDistance();
             if (darkness != null)
             {
-                distanceText.text += "\n闇まで  " + Mathf.Max(0, Mathf.FloorToInt(darkness.DistanceToPlayer)) + " m";
+                distanceText.text += "\nDARK  " + Mathf.Max(0, Mathf.FloorToInt(darkness.DistanceToPlayer)) + " m";
             }
 
             centerText.text = BuildCenterText(gm);
@@ -66,7 +68,7 @@ namespace OverTheRainbow.UI
         /// <summary>リザルト（到達距離）。</summary>
         private string BuildResultText()
         {
-            return "到達距離  " + FormatDistance() + "\n\nR でリトライ";
+            return "DISTANCE  " + FormatDistance() + "\n\nPRESS R TO RETRY";
         }
 
         private string FormatDistance()
@@ -79,9 +81,9 @@ namespace OverTheRainbow.UI
         {
             switch (reason)
             {
-                case GameOverReason.Fell: return "穴に落ちた";
-                case GameOverReason.Darkness: return "闇に飲まれた";
-                case GameOverReason.Corruption: return "視界が侵食された";
+                case GameOverReason.Fell: return "YOU FELL";
+                case GameOverReason.Darkness: return "SWALLOWED BY THE DARK";
+                case GameOverReason.Corruption: return "VISION CORRUPTED";
                 default: return string.Empty;
             }
         }
@@ -98,7 +100,7 @@ namespace OverTheRainbow.UI
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920f, 1080f);
 
-            Font font = LoadBuiltinFont();
+            Font font = this.font != null ? this.font : LoadBuiltinFont();
 
             distanceText = CreateText(canvasGo.transform, font, "Distance", 44, TextAnchor.UpperLeft,
                 new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(40f, -40f), new Vector2(600f, 120f));

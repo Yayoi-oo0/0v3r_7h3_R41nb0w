@@ -88,6 +88,7 @@ namespace OverTheRainbow.EditorTools
             EyeCoverSetup.Apply(go);
 
             go.AddComponent<HudController>();
+            go.AddComponent<ScoreSubmitter>(); // 到達距離を unityroom のランキングへ
 
             BgmSetup.Apply(go);
         }

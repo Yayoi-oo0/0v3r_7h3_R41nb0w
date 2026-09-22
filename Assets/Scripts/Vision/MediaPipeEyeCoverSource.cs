@@ -169,7 +169,7 @@ namespace OverTheRainbow.Vision
             WebCamDevice[] devices = WebCamTexture.devices;
             if (devices.Length == 0)
             {
-                status = "Webカメラが見つかりません（OS のカメラ使用許可も確認してください）";
+                status = "no webcam found (check the OS camera permission too)";
                 Debug.LogWarning("[MediaPipeEyeCoverSource] " + status, this);
                 return;
             }
@@ -184,7 +184,7 @@ namespace OverTheRainbow.Vision
 
             cam = new WebCamTexture(target, requestedWidth, requestedHeight, requestedFps);
             cam.Play();
-            status = cam.isPlaying ? "カメラ起動中" : "カメラを開始できませんでした";
+            status = cam.isPlaying ? "camera running" : "could not start the camera";
         }
 
         private void StartLandmarker()
@@ -192,7 +192,7 @@ namespace OverTheRainbow.Vision
             var model = Resources.Load<TextAsset>(modelResourceName);
             if (model == null)
             {
-                status = "モデル " + modelResourceName + " が Resources にありません";
+                status = "model " + modelResourceName + " is missing from Resources";
                 Debug.LogError("[MediaPipeEyeCoverSource] " + status, this);
                 return;
             }
@@ -205,11 +205,11 @@ namespace OverTheRainbow.Vision
                     numFaces: 1);
                 landmarker = FaceLandmarker.CreateFromOptions(options);
                 result = FaceLandmarkerResult.Alloc(1);
-                status = "動作中";
+                status = "running";
             }
             catch (Exception e)
             {
-                status = "MediaPipe の初期化に失敗: " + e.Message;
+                status = "MediaPipe failed to start: " + e.Message;
                 Debug.LogError("[MediaPipeEyeCoverSource] " + status, this);
             }
         }

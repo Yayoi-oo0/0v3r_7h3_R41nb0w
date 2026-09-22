@@ -74,8 +74,8 @@ namespace OverTheRainbow.Vision
         public bool TryCalibrateColor() => false;
 
         public string StatusLine => IsAvailable
-            ? "受信中 " + PacketsPerSecond.ToString("F0") + " packet/s（port " + port + "）"
-            : "受信なし（port " + port + "）";
+            ? "receiving " + PacketsPerSecond.ToString("F0") + " packet/s (port " + port + ")"
+            : "no packets (port " + port + ")";
 
         public string SourceName => "UDP:" + port;
 
